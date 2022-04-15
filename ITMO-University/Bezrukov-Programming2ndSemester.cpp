@@ -1,3 +1,8 @@
+/*
+Код на второй семестр с Безруковым
+обновляю после каждой пары
+*/
+
 #include <iostream> 
 #include <malloc.h>
 #include <string>
