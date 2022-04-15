@@ -21,7 +21,7 @@ int main() {
         } else if (s == "RENAME") {
             string oldc, newc;
             cin >> oldc >> newc;
-            if (CountryMap.find(oldc) != CountryMap.end()) {
+            if (oldc != newc && CountryMap.find(oldc) != CountryMap.end() && CountryMap.find(newc) == CountryMap.end()) {
                 cout << "Country " << oldc << " with capital " << CountryMap[oldc] << " has been renamed to " << newc << endl;
                 CountryMap[newc] = CountryMap[oldc];
                 CountryMap.erase(oldc);
@@ -32,9 +32,10 @@ int main() {
             if(CountryMap.find(country) != CountryMap.end()) cout << "Country " << country << " has capital " << CountryMap[country] << endl;
             else cout << "Country " << country << " doesn't exist" << endl;
         } else if (s == "DUMP") {
-            if(CountryMap.size() > 0)
-                for(auto m: CountryMap)
-                    cout << m.first << "/" << m.second << endl;
+            if(CountryMap.size() > 0) {
+                for (auto m: CountryMap) cout << m.first << "/" << m.second << " ";
+                cout << endl;
+            }
             else cout << "There are no countries in the world" << endl;
         }
     }
