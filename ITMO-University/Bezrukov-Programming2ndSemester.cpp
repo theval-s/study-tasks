@@ -2,7 +2,6 @@
 Код на второй семестр с Безруковым
 обновляю после каждой пары
 */
-
 #include <iostream> 
 #include <malloc.h>
 #include <string>
@@ -100,6 +99,7 @@ const char* keyword[] = {
 "xor"						 ,
 "xor_eq"
 };
+
 class stroka {
 protected:
 	int len;
@@ -130,7 +130,6 @@ stroka::stroka(char ch) :len(1), pCh(new char[len + 1])
 	pCh[1] = '\0';
 	cout << "stroka::stroka(char ch)" << endl;
 }
-
 stroka::stroka(const char* S) :len(0)
 {
 	//strcpy_s(pCh, len + 1, S);
@@ -146,7 +145,6 @@ stroka::stroka(const char* S) :len(0)
 	}
 	cout << "stroka::stroka(const char* S)" << endl;
 }
-
 stroka::stroka(const stroka& from) :len(0)
 {
 	const char* cptr = from.pCh;
@@ -295,8 +293,6 @@ IdentStr operator+(const IdentStr& id1, const IdentStr& id2)
 	cout << "IdentStr operator+(const IdentStr& id1, const IdentStr& id2)" << endl;
 	return res;
 }
-
-
 IdentStr operator+(const IdentStr& id1, const char* id2)
 {
 	IdentStr tmp(id2);
@@ -308,12 +304,9 @@ IdentStr operator+(const IdentStr& id1, const char* id2)
 	while (res.pCh[i++] = tmp.pCh[j++]);
 	//это - реализация не через стд функции, такая, как надо безрукову
 	//использовать можно для ВСЕХ случаев когда нужно копирование/конкатенация, но мне лень переписывать остальное
-  //важно обратить внимание
-  
 	cout <<"IdentStr operator+(const IdentStr& id1, const char* id2)"<< endl;
 	return res;
 }
-
 IdentStr operator+(const char* id1, const IdentStr& id2)
 {
 	IdentStr tmp(id1);
@@ -327,18 +320,31 @@ IdentStr operator+(const char* id1, const IdentStr& id2)
 	return res;
 	return IdentStr();
 }
+
 class DecStr : public stroka {
 public:
 	DecStr(int = 0);
-	//DecStr(char);
+	DecStr(char);
 	DecStr(const char*);
 	DecStr(const DecStr&);
 	~DecStr();
-	//DecStr& operator=(const DecStr&);
-	//friend DecStr operator+(const DecStr&)
+	DecStr& operator=(const DecStr&);
+	friend DecStr operator+(const DecStr&, const DecStr&);
+	friend DecStr operator+(const DecStr&, const int);
 };
 DecStr::DecStr(int val) :stroka(val) {
 	cout << "DecStr::DecStr(int val) :stroka(val)" << endl;
+}
+DecStr::DecStr(char sym) : stroka(sym) {
+	if (!(sym >= '0' && sym <= '9')) {
+		cout << "Bad symbol pCh[0] =" << sym << endl;
+		if (pCh) delete[]pCh;
+		len = 0;
+		pCh = new char[len + 1];
+		pCh[0] = '\0';
+		return;
+	}
+	cout << "DecStr::DecStr(char sym)" << endl;
 }
 DecStr::DecStr(const char* ds):stroka(ds) {
 	if (!((pCh[0] >= '0' && pCh[0] <= '9') || (pCh[0] == '-') || (pCh[0] == '+'))) {
@@ -365,6 +371,59 @@ DecStr::DecStr(const DecStr& from) : stroka(from) {
 DecStr::~DecStr() {
 	cout << "DecStr::~DecStr()" << endl;
 }
+DecStr operator+(const DecStr& ob1, const DecStr& ob2)
+{
+	int n1, n2;
+	DecStr tmp(ob1);
+	n1= atoi(tmp.GetStr());
+	n2 = atoi(ob2.GetStr());
+	int A = n1 + n2;
+	char* tmpCh;
+	if (tmp.len >= ob2.len) {
+		tmpCh = new char[tmp.len+ 2];
+		_itoa_s(A, tmpCh, tmp.len + 2, 10);
+	}
+	else {
+		tmpCh = new char[ob2.len + 2];
+		_itoa_s(A, tmpCh, ob2.len + 2, 10);
+	}
+	if (tmp.pCh) delete[] tmp.pCh;
+	tmp.pCh = tmpCh;
+	tmp.len = strlen(tmp.pCh);
+	cout << "DecStr operator+(const DecStr& ob1, const DecStr& ob2)" << endl;
+	return tmp;
+}
+DecStr& DecStr::operator=(const DecStr& ds)
+{
+	if (&ds != this) {
+		delete[] pCh;
+		len = ds.len;
+		pCh = new char[len + 1];
+		strcpy_s(pCh, len + 1, ds.pCh);
+	}
+	cout << "DecStr& DecStr::operator=(const DecStr& ds)" << endl;
+	return *this;
+}
+DecStr operator+(const DecStr& ob1, const int ob2)
+{
+	DecStr tmp(ob1);
+	int n1 = atoi(tmp.GetStr()), n2 = ob2;
+	int A = n1 + n2;
+	char* tmpCh;
+	int len2 = 0, tmpn = ob2;
+	while (tmpn > 0) {
+		len2++;
+		tmpn /= 10;
+	}
+	if (tmp.len < len2) tmp.len = len2;
+	tmpCh = new char[tmp.len + 2];
+	_itoa_s(A, tmpCh, tmp.len + 2, 10);
+	if (tmp.pCh) delete[] tmp.pCh;
+	tmp.pCh = tmpCh;
+	tmp.len = strlen(tmp.pCh);
+	cout << "DecStr operator+(const DecStr& ob1, const int ob2)" << endl;
+	return tmp;
+}
 int main()
 {
 
@@ -389,11 +448,33 @@ int main()
 	//obj2.Show();
 	//IdentStr obj3 = " " + obj + "N3149";
 	//obj3.Show();
-	DecStr obj1 = "+1234";
-	obj1.Show();
-	DecStr obj2 = "a";
-	obj2.Show();
-	DecStr obj3 = "+12 34";
-	obj3.Show();
+	//DecStr obj1 = "+1234";
+	//obj1.Show();
+	//DecStr obj2 = "a";
+	//obj2.Show();
+	//DecStr obj3 = "+12 34";
+	//obj3.Show();
+	//DecStr testobj1 = '1';
+	//testobj1.Show();
+	//DecStr testobj2 = 'a';
+	//testobj2.Show();
+	//DecStr pt1 = "-5";
+	//DecStr pt2 = "10";
+	//DecStr pt3 = pt1 + pt2;
+	//DecStr pt4 = "0123";
+	//pt1.Show();
+	//pt2.Show();
+	//pt3.Show();
+	//pt4.Show();
+	DecStr pt1 = "2147483648";
+	DecStr pt2 = "10";
+	pt1.Show();
+	pt2.Show();
+	pt1 = pt1 + pt2;
+	pt1.Show();
+	pt2.Show();
+	DecStr obj("45535");
+	obj = (obj + 45535);
+	obj.Show();
 	return 0;
 }
