@@ -320,8 +320,7 @@ IdentStr operator+(const char* id1, const IdentStr& id2)
 	return res;
 	return IdentStr();
 }
-
-class DecStr : public stroka {
+class DecStr : public Stroka {
 public:
 	DecStr(int = 0);
 	DecStr(char);
@@ -332,10 +331,10 @@ public:
 	friend DecStr operator+(const DecStr&, const DecStr&);
 	friend DecStr operator+(const DecStr&, const int);
 };
-DecStr::DecStr(int val) :stroka(val) {
-	cout << "DecStr::DecStr(int val) :stroka(val)" << endl;
+DecStr::DecStr(int val) :Stroka(val) {
+	cout << "DecStr::DecStr(int val) :Stroka(val)" << endl;
 }
-DecStr::DecStr(char sym) : stroka(sym) {
+DecStr::DecStr(char sym) : Stroka(sym) {
 	if (!(sym >= '0' && sym <= '9')) {
 		cout << "Bad symbol pCh[0] =" << sym << endl;
 		if (pCh) delete[]pCh;
@@ -346,7 +345,7 @@ DecStr::DecStr(char sym) : stroka(sym) {
 	}
 	cout << "DecStr::DecStr(char sym)" << endl;
 }
-DecStr::DecStr(const char* ds):stroka(ds) {
+DecStr::DecStr(const char* ds) :Stroka(ds) {
 	if (!((pCh[0] >= '0' && pCh[0] <= '9') || (pCh[0] == '-') || (pCh[0] == '+'))) {
 		cout << "Bad symbol pCh[0]=" << pCh[0] << endl;
 		if (pCh) delete[]pCh;
@@ -365,8 +364,8 @@ DecStr::DecStr(const char* ds):stroka(ds) {
 		}
 	}
 }
-DecStr::DecStr(const DecStr& from) : stroka(from) {
-	cout << "DecStr::DecStr(const DecStr& from) : stroka(from)" << endl;
+DecStr::DecStr(const DecStr& from) : Stroka(from) {
+	cout << "DecStr::DecStr(const DecStr& from) : Stroka(from)" << endl;
 }
 DecStr::~DecStr() {
 	cout << "DecStr::~DecStr()" << endl;
@@ -375,21 +374,29 @@ DecStr operator+(const DecStr& ob1, const DecStr& ob2)
 {
 	int n1, n2;
 	DecStr tmp(ob1);
-	n1= atoi(tmp.GetStr());
+	n1 = atoi(tmp.GetStr());
 	n2 = atoi(ob2.GetStr());
-	int A = n1 + n2;
-	char* tmpCh;
-	if (tmp.len >= ob2.len) {
-		tmpCh = new char[tmp.len+ 2];
-		_itoa_s(A, tmpCh, tmp.len + 2, 10);
+	long long int A = long long int(n1) + n2;
+	if (A < -2147483648 || A > 2147483647) {
+		delete[] tmp.pCh;
+		tmp.len = 0;
+		tmp.pCh = new char[tmp.len + 1];
+		tmp.pCh[0] = '\0';
 	}
 	else {
-		tmpCh = new char[ob2.len + 2];
-		_itoa_s(A, tmpCh, ob2.len + 2, 10);
+		char* tmpCh;
+		if (tmp.len >= ob2.len) {
+			tmpCh = new char[tmp.len + 2];
+			_itoa_s(A, tmpCh, tmp.len + 2, 10);
+		}
+		else {
+			tmpCh = new char[ob2.len + 2];
+			_itoa_s(A, tmpCh, ob2.len + 2, 10);
+		}
+		if (tmp.pCh) delete[] tmp.pCh;
+		tmp.pCh = tmpCh;
+		tmp.len = strlen(tmp.pCh);
 	}
-	if (tmp.pCh) delete[] tmp.pCh;
-	tmp.pCh = tmpCh;
-	tmp.len = strlen(tmp.pCh);
 	cout << "DecStr operator+(const DecStr& ob1, const DecStr& ob2)" << endl;
 	return tmp;
 }
@@ -408,19 +415,27 @@ DecStr operator+(const DecStr& ob1, const int ob2)
 {
 	DecStr tmp(ob1);
 	int n1 = atoi(tmp.GetStr()), n2 = ob2;
-	int A = n1 + n2;
-	char* tmpCh;
-	int len2 = 0, tmpn = ob2;
-	while (tmpn > 0) {
-		len2++;
-		tmpn /= 10;
+	long long int A = long long(n1) + long long(n2);
+	if (A < -2147483648 || A > 2147483647) {
+		delete[] tmp.pCh;
+		tmp.len = 0;
+		tmp.pCh = new char[tmp.len + 1];
+		tmp.pCh[0] = '\0';
 	}
-	if (tmp.len < len2) tmp.len = len2;
-	tmpCh = new char[tmp.len + 2];
-	_itoa_s(A, tmpCh, tmp.len + 2, 10);
-	if (tmp.pCh) delete[] tmp.pCh;
-	tmp.pCh = tmpCh;
-	tmp.len = strlen(tmp.pCh);
+	else {
+		char* tmpCh;
+		int len2 = 0, tmpn = ob2;
+		while (tmpn > 0) {
+			len2++;
+			tmpn /= 10;
+		}
+		if (tmp.len < len2) tmp.len = len2;
+		tmpCh = new char[tmp.len + 2];
+		_itoa_s(A, tmpCh, tmp.len + 2, 10);
+		if (tmp.pCh) delete[] tmp.pCh;
+		tmp.pCh = tmpCh;
+		tmp.len = strlen(tmp.pCh);
+	}
 	cout << "DecStr operator+(const DecStr& ob1, const int ob2)" << endl;
 	return tmp;
 }
