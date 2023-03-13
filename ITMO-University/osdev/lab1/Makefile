@@ -12,7 +12,7 @@ clean:
 	rm -rf $(NAME).tar.gz
 
 run: $(NAME)
-	./$(NAME) $(DIR)/test_tree
+	./$(NAME) $(DIR)/test_tree "лавандовый раф"
 	
 pack: 
 	tar -czvf $(NAME).tar.gz *
