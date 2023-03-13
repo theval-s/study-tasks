@@ -1,8 +1,18 @@
+.PHONY: all clean run
 
-.PHONY all clean
+NAME=lab11vsaN32471 
+CC=gcc
+CFLAGS=-Wall -Wextra -Werror
+all: $(NAME)
 
-all: lab
+clean: 
+	rm -rf *.o 
+	rm -rf $(NAME) 
 
-clean: @rm -rf *.o lab11vsaN32471 
-
+run: $(NAME)
+	./$(NAME)
+	
+$(NAME): src.c
+	$(CC) -o $(NAME) $^ $(CFLAGS)
+	
 
