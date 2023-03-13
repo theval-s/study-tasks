@@ -20,8 +20,11 @@
 *environment variables (getenv)
 */
 
-int main(){
-	printf("I Work!!\n");
+int main(int argc, char *argv[]){
+	if (argc != 2){
+		printf("Usage: %s <dir>\n\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
 	return 0;
 }
 
