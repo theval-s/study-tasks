@@ -1,4 +1,4 @@
-# Basics of OS Dev
+# Fundamentals of System Programming
 
 Discipline by Guirik Alexei - he's great!
-Lab1 and 2 tasks are in pdf files
+Lab1 tasks are in pdf files
