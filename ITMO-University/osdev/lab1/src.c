@@ -45,9 +45,7 @@ void walking(short debug_state, char *dir, char *desired_string) {
         }
         // strcmp returns 0 if strings are equal
         // so we check that none of them is 0
-        if (strcmp(p->d_name, ".") && strcmp(p->d_name, "..")) {
-            //// for(int i = 0; i < level; i++) printf("--"); //printing
-            ///levels!!!levels removed from code
+        if (strcmp(p->d_name, ".") != 0 && strcmp(p->d_name, "..") != 0) {
             // printf("%s - [%d]\n", p->d_name, p->d_type);
             if (p->d_type == DT_DIR) {
                 if (strlen(dir) + strlen(p->d_name) > PATH_MAX) {
@@ -59,16 +57,18 @@ void walking(short debug_state, char *dir, char *desired_string) {
                 char newdir[PATH_MAX];
                 sprintf(newdir, "%s/%s", dir, p->d_name);  //
                 // new directory for opendir() and readdir()
+                // printf("NEW DIR%s\n", newdir);
                 walking(debug_state, newdir, desired_string);
             } else {
                 bool found_flag = 0;
                 chdir(dir);
                 FILE *fp = fopen(p->d_name, "r");
                 if (!fp) {
-                    if (debug_state)
+                    if (debug_state) {
                         fprintf(stderr, "error opening file %s: %s\n",
                                 p->d_name, strerror(errno));
-
+                        fprintf(stderr, "at dir:%s\n\n", dir);
+                    }
                 } else {
                     char *buf = NULL;
                     size_t buf_len = 0;
@@ -77,15 +77,12 @@ void walking(short debug_state, char *dir, char *desired_string) {
                         if (strstr(buf, desired_string) != NULL) found_flag = 1;
                     }
                     free(buf);
+                    fclose(fp);
                 }
-                fclose(fp);
-                if (found_flag)
-                    printf("found file: %s/%s \n", get_current_dir_name(),
-                           p->d_name);
+                if (found_flag) printf("found file: %s/%s \n", dir, p->d_name);
             }
         }
     }
-
     closedir(d);
     return;
 }
@@ -142,6 +139,18 @@ int main(int argc, char *argv[]) {
         env_debug = (strcmp(getenv("LAB11DEBUG"), "1") == 0 ||
                      (strcmp(getenv("LAB11DEBUG"), "true") == 0));
     // printf("%d\n", env_debug); - to check if debug mode is initiated
+
+    // to get absolute path for folder
+    if (argv[1][0] != '/') {
+        char *cwd = get_current_dir_name();
+        if (cwd) {
+            char abs_path[PATH_MAX];
+            sprintf(abs_path, "%s/%s", cwd, argv[1]);
+            argv[1] = abs_path;
+            free(cwd);
+        }
+    }
+
     walking(env_debug, argv[1], argv[2]);
     return 0;
 }
