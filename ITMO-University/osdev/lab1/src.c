@@ -1,9 +1,10 @@
 #define _GNU_SOURCE  // for get_current_dir_name
-#include <stdlib.h>
 #include <dirent.h>  //for opendir & readdir()
 #include <errno.h>
 #include <getopt.h>
+#include <stdbool.h>  //for booleans
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>  //for opendir()
 #include <unistd.h>     // for chdir
@@ -13,21 +14,12 @@
 // searching for files containing string of utf-8 bytes (input)
 // example of launching: ./lab11vsaN32471 /home "лавандовый раф"
 
-/*	TO-DO
- *makefile - done (i think so)
- *directory-walking using opendir/readdir with recursion - done
- *file reading - done
- *options (getopt_long) - done
- *catching errors - kinda? not everywhere
- *environment variables (getenv, fprintf(stderr, ...))
- */
-
 // options
 //-v --version
 //-h --help
-// environment variables: LAB11DEBUG - enabling or disabling debug info
+// environment variables: LAB11DEBUG - enabling debug info
 
-void walking(int debug_state, char *dir, char *desired_string) {
+void walking(short debug_state, char *dir, char *desired_string) {
     DIR *d = opendir(dir);
     if (d == NULL) {
         printf("Failed to opendir() %s\n", dir);
@@ -43,33 +35,40 @@ void walking(int debug_state, char *dir, char *desired_string) {
         */
         if (p == NULL) {
             if (errno != 0) {
-            	if(debug_state) fprintf(stderr, "Error reading file %s: %s\n", p->d_name, strerror(errno)); 
-	            continue;
+                if (debug_state)
+                    fprintf(stderr, "Error reading file %s: %s\n", p->d_name,
+                            strerror(errno));
+                continue;
             }
             // man readdir - EOF returned on both EOF and errors
-                break;
+            break;
         }
         // strcmp returns 0 if strings are equal
         // so we check that none of them is 0
         if (strcmp(p->d_name, ".") && strcmp(p->d_name, "..")) {
-            //// for(int i = 0; i < level; i++) printf("--"); //printing levels!!!levels removed from code
+            //// for(int i = 0; i < level; i++) printf("--"); //printing
+            ///levels!!!levels removed from code
             // printf("%s - [%d]\n", p->d_name, p->d_type);
             if (p->d_type == DT_DIR) {
-            	if(strlen(dir)+strlen(p->d_name) > PATH_MAX){
-            		if(debug_state) fprintf(stderr, "Path too long to open dir %s\n", p->d_name);
-            		continue;
-            	}
+                if (strlen(dir) + strlen(p->d_name) > PATH_MAX) {
+                    if (debug_state)
+                        fprintf(stderr, "Path too long to open dir %s\n",
+                                p->d_name);
+                    continue;
+                }
                 char newdir[PATH_MAX];
                 sprintf(newdir, "%s/%s", dir, p->d_name);  //
                 // new directory for opendir() and readdir()
                 walking(debug_state, newdir, desired_string);
             } else {
-                short found_flag = 0;
+                bool found_flag = 0;
                 chdir(dir);
                 FILE *fp = fopen(p->d_name, "r");
                 if (!fp) {
-                   if(debug_state) fprintf(stderr,"error opening file %s: %s\n", p->d_name, strerror(errno));
-                    
+                    if (debug_state)
+                        fprintf(stderr, "error opening file %s: %s\n",
+                                p->d_name, strerror(errno));
+
                 } else {
                     char *buf = NULL;
                     size_t buf_len = 0;
@@ -92,9 +91,8 @@ void walking(int debug_state, char *dir, char *desired_string) {
 }
 
 int main(int argc, char *argv[]) {
-	if(getenv("LAB11DEBUG") != NULL) printf("%s\n",getenv("LAB11DEBUG"));
     int option_index = 0;
-    //getopt loop
+    // getopt loop
     for (;;) {
         static struct option long_options[] = {{"version", no_argument, 0, 0},
                                                {"help", no_argument, 0, 0}};
@@ -126,7 +124,9 @@ int main(int argc, char *argv[]) {
                 printf("Usage: %s <dir> <search_query>\n", argv[0]);
                 printf(
                     "options:\n -h, --help \t display argument information\n "
-                    "-v, --version - display version info\n");
+                    "-v, --version - display version info\n"
+                    "If LAB11DEBUG environment variable is set to 1 or true - "
+                    "DEBUG MODE\n");
                 exit(EXIT_SUCCESS);
                 break;
             default:
@@ -137,7 +137,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: %s <dir> <search_query>\n\n", argv[0]);
         exit(EXIT_FAILURE);
     }
-    walking(0, argv[1], argv[2]);
+    bool env_debug = false;
+    if (getenv("LAB11DEBUG") != NULL)
+        env_debug = (strcmp(getenv("LAB11DEBUG"), "1") == 0 ||
+                     (strcmp(getenv("LAB11DEBUG"), "true") == 0));
+    // printf("%d\n", env_debug); - to check if debug mode is initiated
+    walking(env_debug, argv[1], argv[2]);
     return 0;
 }
 
