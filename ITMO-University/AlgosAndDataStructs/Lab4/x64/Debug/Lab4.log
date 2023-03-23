@@ -1,0 +1,3 @@
+﻿  Source.cpp
+D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab4\Source.cpp(6,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  Lab4.vcxproj -> D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab4\x64\Debug\Lab4.exe
