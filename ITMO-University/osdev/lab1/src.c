@@ -35,9 +35,8 @@ void walking(short debug_state, char *dir, char *desired_string) {
         */
         if (p == NULL) {
             if (errno != 0) {
-                if (debug_state)
-                    fprintf(stderr, "Error reading file %s: %s\n", p->d_name,
-                            strerror(errno));
+                printf("Error reading file %s: %s\n", p->d_name,
+                       strerror(errno));
                 continue;
             }
             // man readdir - EOF returned on both EOF and errors
@@ -49,9 +48,7 @@ void walking(short debug_state, char *dir, char *desired_string) {
             // printf("%s - [%d]\n", p->d_name, p->d_type);
             if (p->d_type == DT_DIR) {
                 if (strlen(dir) + strlen(p->d_name) > PATH_MAX) {
-                    if (debug_state)
-                        fprintf(stderr, "Path too long to open dir %s\n",
-                                p->d_name);
+                    printf("Path too long to open dir %s\n", p->d_name);
                     continue;
                 }
                 char newdir[PATH_MAX];
@@ -60,15 +57,15 @@ void walking(short debug_state, char *dir, char *desired_string) {
                 // printf("NEW DIR%s\n", newdir);
                 walking(debug_state, newdir, desired_string);
             } else {
+                if (debug_state)
+                    fprintf(stderr, "reading file %s:\n", p->d_name);
                 bool found_flag = 0;
                 chdir(dir);
                 FILE *fp = fopen(p->d_name, "r");
                 if (!fp) {
-                    if (debug_state) {
-                        fprintf(stderr, "error opening file %s: %s\n",
-                                p->d_name, strerror(errno));
-                        fprintf(stderr, "at dir:%s\n\n", dir);
-                    }
+                    printf("error opening file %s: %s\n", p->d_name,
+                           strerror(errno));
+                    printf("at dir:%s\n", dir);
                 } else {
                     char *buf = NULL;
                     size_t buf_len = 0;
@@ -91,26 +88,41 @@ int main(int argc, char *argv[]) {
     int option_index = 0;
     // getopt loop
     for (;;) {
-        static struct option long_options[] = {{"version", no_argument, 0, 0},
-                                               {"help", no_argument, 0, 0}};
+        static struct option long_options[] = {
+            {"version", no_argument, NULL, 1},
+            {"help", no_argument, NULL, 2},
+            {0, 0, 0, 0}};
         int c = getopt_long(argc, argv, "vh", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
-            case 0:
-                if (strcmp(long_options[option_index].name, "version") == 0) {
+            case 1:
+                if (strcmp(argv[optind - 1], "--version") == 0) {
                     printf(
                         "Lab1.1 version 0.7 Волков Сергей Алексеевич N32471 2 "
                         "вариант\n");
+
                     exit(EXIT_SUCCESS);
-                } else if (strcmp(long_options[option_index].name, "help") ==
-                           0) {
-                    printf("Usage: %s <dir> <search_query>\n\n", argv[0]);
+                } else {
+                    printf("Option not recognized. Use %s --help for help\n",
+                           argv[0]);
+                    exit(EXIT_FAILURE);
+                }
+            case 2:
+                if (strcmp(argv[optind - 1], "--help") == 0) {
+                    printf("Usage: %s <dir> <search_query>\n", argv[0]);
                     printf(
                         "options:\n -h, --help \t display argument "
-                        "information\n -v, --version - display version info\n");
+                        "information\n "
+                        "-v, --version - display version info\n"
+                        "If LAB11DEBUG environment variable is set to 1 or "
+                        "true - "
+                        "DEBUG MODE\n");
                     exit(EXIT_SUCCESS);
+                } else {
+                    printf("Option not recognized. Use %s --help for help\n",
+                           argv[0]);
+                    exit(EXIT_FAILURE);
                 }
-                break;
             case 'v':
                 printf(
                     "Lab1.1 version 0.7 Волков Сергей Алексеевич N32471 2 "
@@ -131,7 +143,9 @@ int main(int argc, char *argv[]) {
         }
     }
     if (argc != 3) {
-        fprintf(stderr, "Usage: %s <dir> <search_query>\n\n", argv[0]);
+        // if there are 2 options it still launches the program
+        fprintf(stderr, "Not enough arguments. Use %s --help for help\n",
+                argv[0]);
         exit(EXIT_FAILURE);
     }
     bool env_debug = false;
