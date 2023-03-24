@@ -1,6 +1,5 @@
-.PHONY: all clean run pack
+.PHONY: all clean pack
 
-DIR = $(shell pwd)
 NAME=lab11vsaN32471
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror
@@ -10,9 +9,6 @@ all: $(NAME)
 clean: 
 	rm -rf $(NAME)
 	rm -rf $(NAME).tar.gz
-
-run: $(NAME)
-	./$(NAME) $(DIR)/test_tree "лавандовый раф"
 	
 pack: 
 	tar -czvf $(NAME).tar.gz *
