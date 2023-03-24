@@ -1,6 +1,6 @@
 .PHONY: all clean pack
 
-NAME=lab12vsaN32471
+NAME=lab1vsaN32471
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror
 

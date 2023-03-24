@@ -11,9 +11,21 @@
 #define PATH_MAX 4096
 // var: 19
 //
-//
-//
-//
+//Опция: --ipv4-addr-bin <значение>
+//Назначение: поиск файлов, содержащих заданное значение IPv4-адреса в бинарной
+//(little-endian или big-endian) форме, т. е. в виде четырех последовательных октетов
+//с заданными значениями.
+//Пример: --ipv4-addr-bin 192.168.8.1
+
+/*
+options:
+-h 
+-v
+-O - "or" option for plugins
+-A - "and" option for plugins
+-N - "not" option for plugins
+-P <dir> - plugin directory
+*/
 
 
 int main(int argc, char *argv[]) {
@@ -30,7 +42,7 @@ int main(int argc, char *argv[]) {
             case 1:
                 if (strcmp(argv[optind - 1], "--version") == 0) {
                     printf(
-                        "Lab1.1 version 0.7 Волков Сергей Алексеевич N32471 2 "
+                        "Lab1.2 version 0.1 Волков Сергей Алексеевич N32471 19"
                         "вариант\n");
 
                     exit(EXIT_SUCCESS);
