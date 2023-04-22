@@ -16,6 +16,7 @@
 //(little-endian или big-endian) форме, т. е. в виде четырех последовательных октетов
 //с заданными значениями.
 //Пример: --ipv4-addr-bin 192.168.8.1
+//
 
 /*
 options:
@@ -25,6 +26,9 @@ options:
 -A - "and" option for plugins
 -N - "not" option for plugins
 -P <dir> - plugin directory
+
+
+notable: check examples in GDrive 
 */
 
 

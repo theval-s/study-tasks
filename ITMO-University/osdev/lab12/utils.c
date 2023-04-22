@@ -8,7 +8,7 @@
 #include <sys/types.h>  //for opendir()
 #include <unistd.h>     // for chdir
 
-void walking(short debug_state, char *dir, char *desired_string) {
+void walking(int cnt, char *dir, char *desired_string) {
     DIR *d = opendir(dir);
     if (d == NULL) {
         printf("Failed to opendir() %s\n", dir);
@@ -45,7 +45,9 @@ void walking(short debug_state, char *dir, char *desired_string) {
                 // new directory for opendir() and readdir()
                 // printf("NEW DIR%s\n", newdir);
                 walking(debug_state, newdir, desired_string);
-            } else {
+            } else 
+            /* need to change this to use library functions instead:
+            {
                 if (debug_state)
                     fprintf(stderr, "reading file %s:\n", p->d_name);
                 bool found_flag = 0;
@@ -65,8 +67,12 @@ void walking(short debug_state, char *dir, char *desired_string) {
                     free(buf);
                     fclose(fp);
                 }
-                if (found_flag) printf("found file: %s/%s \n", dir, p->d_name);
+                if (found_flag) {
+                	printf("found file: %s/%s \n", dir, p->d_name);
+               		cnt++;
+                }
             }
+            */
         }
     }
     closedir(d);
