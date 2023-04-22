@@ -4,12 +4,13 @@ NAME=lab1vsaN32471
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror
 
-all: $(NAME)
+all: $(NAME) libvsaN32471
 
 clean: 
 	rm -rf $(NAME)
 	rm -rf $(NAME).tar.gz
-	rm -rf *.o
+	rm -rf *.
+	rm -rf *.so
 	
 pack: 
 	tar -czvf $(NAME).tar.gz *
@@ -19,5 +20,8 @@ $(NAME): src.c utils.o
 	
 utils.o: utils.c
 	$(CC) $^ $(CFLAGS) -c
+
+libvsaN32471:
+	$(CC) -shared -fPIC $@.c -o $@.so -ldl -lm $(CFLAGS)
 	
 

@@ -1,4 +1,5 @@
 #include "utils.h"
+#define _DEFAULT_SOURCE
 #include <dirent.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -7,8 +8,9 @@
 #include <string.h>
 #include <sys/types.h>  //for opendir()
 #include <unistd.h>     // for chdir
+#define PATH_MAX 4096
 
-void walking(int cnt, char *dir, char *desired_string) {
+void walking(short debug_state, char *dir, char *desired_string) {
     DIR *d = opendir(dir);
     if (d == NULL) {
         printf("Failed to opendir() %s\n", dir);
@@ -45,7 +47,9 @@ void walking(int cnt, char *dir, char *desired_string) {
                 // new directory for opendir() and readdir()
                 // printf("NEW DIR%s\n", newdir);
                 walking(debug_state, newdir, desired_string);
-            } else 
+            } else {
+
+            } 
             /* need to change this to use library functions instead:
             {
                 if (debug_state)
@@ -69,7 +73,6 @@ void walking(int cnt, char *dir, char *desired_string) {
                 }
                 if (found_flag) {
                 	printf("found file: %s/%s \n", dir, p->d_name);
-               		cnt++;
                 }
             }
             */
