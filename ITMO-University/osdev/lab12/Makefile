@@ -1,16 +1,14 @@
 .PHONY: all clean pack
 
 NAME=lab1vsaN32471
+LNAME=libvsaN32471
 CC=gcc
 CFLAGS=-Wall -Wextra -Werror
 
-all: $(NAME) libvsaN32471
+all: $(NAME) libvsaN32471.so
 
 clean: 
-	rm -rf $(NAME)
-	rm -rf $(NAME).tar.gz
-	rm -rf *.
-	rm -rf *.so
+	rm -rf $(NAME) $(NAME).tar.gz *.o $(LNAME).so
 	
 pack: 
 	tar -czvf $(NAME).tar.gz *
@@ -21,7 +19,7 @@ $(NAME): src.c utils.o
 utils.o: utils.c
 	$(CC) $^ $(CFLAGS) -c
 
-libvsaN32471:
-	$(CC) -shared -fPIC $@.c -o $@.so -ldl -lm $(CFLAGS)
+$(LNAME).so: $(LNAME).c
+	$(CC) -shared -fPIC $^ -o $@ -ldl -lm $(CFLAGS)
 	
 
