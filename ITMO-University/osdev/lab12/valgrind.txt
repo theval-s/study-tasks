@@ -1,0 +1,5 @@
+==261714== HEAP SUMMARY:
+==261714==     in use at exit: 0 bytes in 0 blocks
+==261714==   total heap usage: 23 allocs, 23 frees, 116,827 bytes allocated
+==261714== 
+==261714== All heap blocks were freed -- no leaks are possible

@@ -14,10 +14,10 @@ pack:
 	tar -czvf $(NAME).tar.gz *
 	
 $(NAME): src.c utils.o
-	$(CC) -o $(NAME) $^ $(CFLAGS)
+	$(CC) -o $(NAME) $^ $(CFLAGS) -O3
 	
 utils.o: utils.c
-	$(CC) $^ $(CFLAGS) -c
+	$(CC) $^ $(CFLAGS) -c -O3
 
 $(LNAME).so: $(LNAME).c
 	$(CC) -shared -fPIC $^ -o $@ -ldl -lm $(CFLAGS)

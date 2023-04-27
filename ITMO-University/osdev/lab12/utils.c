@@ -7,7 +7,7 @@
 #include <dlfcn.h>
 #define PATH_MAX 4096
 
-void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir)
+void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt)
 {
     DIR *d = opendir(dir);
     if (d == NULL)
@@ -45,6 +45,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir)
                 if (dlfun == NULL)
                 {
                     fprintf(stderr, "Err: dlsym() failed:%s\n", dlerror());
+                    dlclose(dl);
                     continue;
                 }
                 getinfo_fun func = (getinfo_fun)dlfun;
@@ -52,25 +53,52 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir)
                 int info = func(&plug_info);
                 if (info < 0)
                 {
-                    fprintf(stderr, "get_plugin_info failed for lib '%s'\n", p->d_name);
+                    fprintf(stderr, "get_plugin_info failed for lib '%s', trying next...\n", p->d_name);
+                    dlclose(dl);
+                    continue;
                 }
                 if (plug_info.sup_opts_len == 0)
                 {
-                    fprintf(stderr, "Plugin '%s' issue: no options?", p->d_name);
+                    fprintf(stderr, "Plugin '%s' issue: no options! Trying next plugin...\n", p->d_name);
+                    dlclose(dl);
                     continue;
                 }
                 (*in_opts_c) += plug_info.sup_opts_len;
                 (*in_opts) = realloc((*in_opts), (*in_opts_c) * sizeof(struct plugin_option));
                 if ((*in_opts) == NULL)
                 {
-                    printf("Error! realloc() failed");
+                    fprintf(stderr, "Error! realloc() failed\n");
+                    dlclose(dl);
+                    if ((*dlibs))
+                    {
+                        for (size_t i = 0; i < (*libcnt); i++)
+                        {
+                            dlclose((*dlibs)[i]);
+                        }
+                        free((*dlibs));
+                    }
+                    free((*in_opts));
+                    free((*proc_file));
                     exit(EXIT_FAILURE);
                 }
                 for (size_t i = 0; i < plug_info.sup_opts_len; i++)
                 {
                     (*in_opts)[(*in_opts_c) - plug_info.sup_opts_len + i] = plug_info.sup_opts[i];
-                    //printf("added option to opts!%s \t%s\n", plug_info.sup_opts[i].opt.name, plug_info.sup_opts[i].opt_descr);
+                    // printf("added option to opts!%s \t%s\n", plug_info.sup_opts[i].opt.name, plug_info.sup_opts[i].opt_descr);
                 }
+                void *pf = dlsym(dl, "plugin_process_file");
+                if (pf == NULL)
+                {
+                    fprintf(stderr, "Error: dlsym() failed for '%s' lib:%s\n", p->d_name, dlerror());
+                    dlclose(dl);
+                    continue;
+                }
+                (*proc_file_c)++;
+                (*proc_file) = realloc((*proc_file), (*proc_file_c) * sizeof(process_file_t));
+                (*proc_file)[(*proc_file_c) - 1] = (process_file_t)pf;
+                (*libcnt)++;
+                (*dlibs) = realloc((*dlibs), sizeof(dl) * (*libcnt));
+                (*dlibs)[(*libcnt) - 1] = dl;
             }
             else
                 fprintf(stderr, "Err: dlopen() failed for lib '%s'. Reason:%s\n", p->d_name, dlerror());
@@ -79,7 +107,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir)
     closedir(d);
 }
 
-void walking(struct option in_opts[], size_t in_opts_len, char *dir, char *desired_string, const int narg, const int oaarg)
+void walking(struct option in_opts[], size_t in_opts_len, char *dir, process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg)
 {
     DIR *d = opendir(dir);
     if (d == NULL)
@@ -87,13 +115,7 @@ void walking(struct option in_opts[], size_t in_opts_len, char *dir, char *desir
         printf("Failed to opendir() %s\n", dir);
         return;
     }
-    // just to compile it for test
-    if (narg)
-        printf("no");
-    if (oaarg)
-        printf("or");
-    in_opts_len++;
-    in_opts[0].flag = (int *)"test";
+
     for (;;)
     {
         errno = 0;
@@ -114,8 +136,7 @@ void walking(struct option in_opts[], size_t in_opts_len, char *dir, char *desir
             // man readdir - EOF returned on both EOF and errors
             break;
         }
-        // strcmp returns 0 if strings are equal
-        // so we check that none of them is 0
+
         if (strcmp(p->d_name, ".") != 0 && strcmp(p->d_name, "..") != 0)
         {
             // printf("%s - [%d]\n", p->d_name, p->d_type);
@@ -130,37 +151,37 @@ void walking(struct option in_opts[], size_t in_opts_len, char *dir, char *desir
                 sprintf(newdir, "%s/%s", dir, p->d_name); //
                 // new directory for opendir() and readdir()
                 // printf("NEW DIR%s\n", newdir);
-                walking(in_opts, in_opts_len, newdir, desired_string, narg, oaarg);
+                walking(in_opts, in_opts_len, newdir, proc_file, proc_file_c, narg, oaarg);
             }
             else
             {
-            }
-            /* need to change this to use library functions instead:
-            {
-                if (debug_state)
-                    fprintf(stderr, "reading file %s:\n", p->d_name);
-                bool found_flag = 0;
-                chdir(dir);
-                FILE *fp = fopen(p->d_name, "r");
-                if (!fp) {
-                    printf("error opening file %s: %s\n", p->d_name,
-                           strerror(errno));
-                    printf("at dir:%s\n", dir);
-                } else {
-                    char *buf = NULL;
-                    size_t buf_len = 0;
-                    ssize_t read;
-                    while ((read = getline(&buf, &buf_len, fp)) != -1) {
-                        if (strstr(buf, desired_string) != NULL) found_flag = 1;
+                int ch = chdir(dir);
+                if (ch != 0)
+                {
+                    fprintf(stderr, "couldn't change working dir: %s\n", strerror(errno));
+                    continue;
+                }
+                int found = 0;
+                int found_prev = 0;
+                for (size_t i = 0; i < proc_file_c; i++)
+                {
+                    found_prev = found;
+                    found = proc_file[i](p->d_name, in_opts, in_opts_len);
+                    if (found == -1)
+                    {
+                        fprintf(stderr, "Error in lib №%ld! :%s\n", i, strerror(errno));
+                        found = found_prev;
                     }
-                    free(buf);
-                    fclose(fp);
+                    if (oaarg == 0 && found == 0)
+                        break;
+                    else if (oaarg == 1 && found == 1)
+                        break;
                 }
-                if (found_flag) {
+                if (narg != 1 && found == 1)
                     printf("found file: %s/%s \n", dir, p->d_name);
-                }
+                else if (narg == 1 && found == 0)
+                    printf("found file: %s/%s \n", dir, p->d_name);
             }
-            */
         }
     }
     closedir(d);
