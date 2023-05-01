@@ -56,8 +56,8 @@ int plugin_process_file(const char *fname,
                 errno = EINVAL;
                 return -1;
             }
-            ip = calloc(strlen((char*)in_opts[i].flag)+1, sizeof(char));
-            strcpy(ip, (char*)in_opts[i].flag);
+            ip = calloc(strlen((char *)in_opts[i].flag) + 1, sizeof(char));
+            strcpy(ip, (char *)in_opts[i].flag);
         }
     }
     if (!ip)
@@ -67,22 +67,27 @@ int plugin_process_file(const char *fname,
     }
     char *endptr;
     unsigned char nums[4];
-    unsigned int t = strtol(strtok_r(ip, ".", &endptr), NULL, 10);
-    if (t > 255)
+    char *t = strtok_r(ip, ".", &endptr);
+    int n= 999;
+    if (t != NULL)
+        n = strtol(t, NULL, 10);
+    if (t == NULL || n > 255)
     {
         errno = EINVAL;
         return -1;
     }
-    nums[0] = t;
+    nums[0] = n;
     for (int i = 1; i < 4; i++)
     {
-        t = strtol(strtok_r(NULL, ".", &endptr), NULL, 10);
-        if (t > 255)
+        t = strtok_r(NULL, ".", &endptr);
+        if (t != NULL)
+            n = strtol(t, NULL, 10);
+        if (t == NULL || n > 255)
         {
             errno = EINVAL;
             return -1;
         }
-        nums[i] = t;
+        nums[i] = n;
     }
     unsigned char be[4], le[4];
     for (int i = 0; i < 4; i++)
