@@ -56,8 +56,8 @@ int plugin_process_file(const char *fname,
                 errno = EINVAL;
                 return -1;
             }
-            ip = malloc(sizeof((char *)in_opts[i].flag));
-            memcpy(ip, in_opts[i].flag, strlen((char *)in_opts[i].flag));
+            ip = calloc(strlen((char*)in_opts[i].flag)+1, sizeof(char));
+            strcpy(ip, (char*)in_opts[i].flag);
         }
     }
     if (!ip)

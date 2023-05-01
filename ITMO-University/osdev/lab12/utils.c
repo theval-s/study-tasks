@@ -1,13 +1,13 @@
 #include "utils.h"
 #include "plugin_api.h"
-#include <stdbool.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h> //for opendir()
-#include <unistd.h>    // for chdir
+#include <unistd.h>
 #include <dlfcn.h>
 #define PATH_MAX 4096
 
-void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt)
+void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt, struct plugin_info **pi)
 {
     DIR *d = opendir(dir);
     if (d == NULL)
@@ -63,6 +63,8 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
                     dlclose(dl);
                     continue;
                 }
+                (*pi) = realloc((*pi), sizeof(struct plugin_info)*((*libcnt)+1));
+                (*pi)[(*libcnt)] = plug_info;
                 (*in_opts_c) += plug_info.sup_opts_len;
                 (*in_opts) = realloc((*in_opts), (*in_opts_c) * sizeof(struct plugin_option));
                 if ((*in_opts) == NULL)
@@ -107,7 +109,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
     closedir(d);
 }
 
-void walking(struct option in_opts[], size_t in_opts_len, char *dir, process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg)
+void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg)
 {
     DIR *d = opendir(dir);
     if (d == NULL)
@@ -165,8 +167,9 @@ void walking(struct option in_opts[], size_t in_opts_len, char *dir, process_fil
                 int found_prev = 0;
                 for (size_t i = 0; i < proc_file_c; i++)
                 {
+                    if(in_opts[i] == NULL) continue;
                     found_prev = found;
-                    found = proc_file[i](p->d_name, in_opts, in_opts_len);
+                    found = proc_file[i](p->d_name, in_opts[i], in_opts_len[i]);
                     if (found == -1)
                     {
                         fprintf(stderr, "Error in lib №%ld! :%s\n", i, strerror(errno));
