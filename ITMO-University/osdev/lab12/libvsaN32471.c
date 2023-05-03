@@ -13,7 +13,6 @@
 // с заданными значениями.
 // Пример: --ipv4-addr-bin 192.168.8.1
 //
-
 int plugin_get_info(struct plugin_info *ppi)
 {
     ppi->plugin_purpose = "search for binary ipv4";
@@ -24,7 +23,6 @@ int plugin_get_info(struct plugin_info *ppi)
     ppi->sup_opts_len = sizeof(opts) / sizeof(opts[0]);
     return 0;
 }
-
 static int isEqual(unsigned char *buf, unsigned char *s)
 {
     int ret = 1;
@@ -68,7 +66,7 @@ int plugin_process_file(const char *fname,
     char *endptr;
     unsigned char nums[4];
     char *t = strtok_r(ip, ".", &endptr);
-    int n= 999;
+    int n = 999;
     if (t != NULL)
         n = strtol(t, NULL, 10);
     if (t == NULL || n > 255)
@@ -126,7 +124,7 @@ int plugin_process_file(const char *fname,
         if (getenv("LAB1DEBUG") != NULL)
             fprintf(stderr, "DBG: IPv4BIN:in file: %s found '%X%X%X%X' at pos (%ld)\n", fname, buf[0], buf[1], buf[2], buf[3], ftell(fp) - 4);
         fclose(fp);
-        return 1;
+        return 0;
     }
     while (!feof(fp))
     {
@@ -140,7 +138,7 @@ int plugin_process_file(const char *fname,
             {
                 // file empty :o
                 fclose(fp);
-                return 0;
+                return 1;
             }
         }
         for (short i = 0; i < 3; i++)
@@ -148,8 +146,10 @@ int plugin_process_file(const char *fname,
         buf[3] = t[0];
         if (isEqual(buf, be) || isEqual(buf, le))
         {
+            if (getenv("LAB1DEBUG") != NULL)
+            fprintf(stderr, "DBG: IPv4BIN:in file: %s found '%X%X%X%X' at pos (%ld)\n", fname, buf[0], buf[1], buf[2], buf[3], ftell(fp) - 4);
             fclose(fp);
-            return 1;
+            return 0;
         }
     }
     fclose(fp);

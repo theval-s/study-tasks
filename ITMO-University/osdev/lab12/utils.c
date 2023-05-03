@@ -63,7 +63,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
                     dlclose(dl);
                     continue;
                 }
-                (*pi) = realloc((*pi), sizeof(struct plugin_info)*((*libcnt)+1));
+                (*pi) = realloc((*pi), sizeof(struct plugin_info) * ((*libcnt) + 1));
                 (*pi)[(*libcnt)] = plug_info;
                 (*in_opts_c) += plug_info.sup_opts_len;
                 (*in_opts) = realloc((*in_opts), (*in_opts_c) * sizeof(struct plugin_option));
@@ -167,9 +167,10 @@ void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_fi
                 int found_prev = 0;
                 for (size_t i = 0; i < proc_file_c; i++)
                 {
-                    if(in_opts[i] == NULL) continue;
+                    if (in_opts[i] == NULL)
+                        continue;
                     found_prev = found;
-                    found = proc_file[i](p->d_name, in_opts[i], in_opts_len[i]);
+                    found = (proc_file[i](p->d_name, in_opts[i], in_opts_len[i]) == 0 ? 1 : 0);
                     if (found == -1)
                     {
                         fprintf(stderr, "Error in lib №%ld! :%s\n", i, strerror(errno));

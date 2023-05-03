@@ -81,14 +81,14 @@ int main(int argc, char *argv[])
     {
         printf("Malloc failed! Exiting...");
         if (walk_opts)
-    {
-        for (size_t z = 0; z < libcnt; z++)
         {
-            if (walk_opts[z])
-                free(walk_opts[z]);
+            for (size_t z = 0; z < libcnt; z++)
+            {
+                if (walk_opts[z])
+                    free(walk_opts[z]);
+            }
+            free(walk_opts);
         }
-        free(walk_opts);
-    }
         if (walk_opts_len)
             free(walk_opts_len);
         cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
                 continue;
             case 'v':
                 printf(
-                    "Lab1.2 version 0.7 Волков Сергей Алексеевич N32471 "
+                    "Lab1.2 version 1.0 Волков Сергей Алексеевич N32471 "
                     "19 вариант\n");
                 if (walk_opts)
                 {
@@ -159,6 +159,9 @@ int main(int argc, char *argv[])
                 break;
             case 'N':
                 narg = 1;
+                break;
+            case 'A':
+                oaarg = 0;
                 break;
             default:
                 printf("Error: failed to parse options! Use -h to see available opts\n");
@@ -274,13 +277,13 @@ int main(int argc, char *argv[])
         free(walk_opts);
     }
     if (walk_opts_len)
-            free(walk_opts_len);
+        free(walk_opts_len);
     return 0;
 }
 
 void cleanup(struct plugin_option *in_opts, process_file_t *proc_file_arr, void **dls, size_t libcnt, struct plugin_info *pi)
 {
-    if (in_opts!= NULL)
+    if (in_opts != NULL)
         free(in_opts);
     if (proc_file_arr != NULL)
         free(proc_file_arr);
@@ -292,5 +295,6 @@ void cleanup(struct plugin_option *in_opts, process_file_t *proc_file_arr, void 
         }
         free(dls);
     }
-    if(pi!= NULL) free(pi);
+    if (pi != NULL)
+        free(pi);
 }

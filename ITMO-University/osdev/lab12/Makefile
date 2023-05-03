@@ -14,7 +14,7 @@ pack:
 	tar -czvf $(NAME).tar.gz *
 	
 $(NAME): src.c utils.o
-	$(CC) -o $(NAME) $^ $(CFLAGS) -O3
+	$(CC) -o $(NAME) $^ $(CFLAGS) -O3 -ldl
 	
 utils.o: utils.c
 	$(CC) $^ $(CFLAGS) -c -O3
