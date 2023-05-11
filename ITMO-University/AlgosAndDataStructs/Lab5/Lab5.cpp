@@ -6,9 +6,14 @@ using namespace std;
 const int INF = 1e9;
 
 //task 1 - Prim's Algorithm
-/*
+
 vector<vector<pair<int, int>>> adj;
 vector<int> dist;
+/// <summary>
+/// builds the spanning tree of a graph using Prim's algorithm
+/// </summary>
+/// <param name="start">starting node</param>
+/// <param name="n">amount of nodes</param>
 void prim(int start, int n) {
     vector<int> included_nodes = { start };
     vector<bool> isIncluded(n + 1, 0);
@@ -27,7 +32,7 @@ void prim(int start, int n) {
         included_nodes.push_back(node);
     }
 }
-*/
+
 
 
 
