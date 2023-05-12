@@ -38,22 +38,59 @@ void prim(int start, int n) {
 
 //task 2 - Aho-Corasicks Algo
 
-int bor[1000][52];
 //if char < 'a'   -65
 //else - 71
-int trie[500][26];
-int val[500];
+int trie[1000][52];
+int val[1000];
+int fail[1000];
 int idx = 0;
 void insert(string s, int v) {
     int u = 0;
     for (char c : s) {
-        int x = c - 'a';
+        int x = ((int)c < (int)'a')?(c-'A'):((int)c -71);
         if (!trie[u][x]) {
             trie[u][x] = ++idx;
-        }
+        }   
         u = trie[u][x];
     }
     val[u] = v;
+}
+void build() {
+    queue<int> q;
+    for (int i = 0; i < 52; i++) {
+        if (trie[0][i]) {
+            q.push(trie[0][i]);
+        }
+    }
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        for (int i = 0; i < 52; i++) {
+            int v = trie[u][i];
+            if (!v) {
+                trie[u][i] = trie[fail[u]][i];
+                continue;
+            }
+            fail[v] = trie[fail[u]][i];
+            q.push(v);
+        }
+    }
+}
+vector<int> find(string s, int n) {
+    vector<int> ans;
+    int u = 0;
+    for (int i = 0; i < n; i++) {
+        int x = ((int)s[i] < (int)'a') ? (s[i] - 'A') : ((int)s[i] - 71);
+        u = trie[u][x];
+        int v = u;
+        while (v > 0) {
+            if (val[v]) {
+                ans.push_back(i-idx+2);
+            }
+            v = fail[v];
+        }
+    }
+    return ans;
 }
 
 int main() {
@@ -77,7 +114,15 @@ int main() {
     cout << ans << '\n';
     */
 
-    insert("asdf", 1);
     //task2
+    string p, t;
+    cin >> p >> t;
+    insert(p, 1);
+    build();
+    vector<int> ans = find(t, t.size());
+    cout << ans.size() << endl;
+    for (auto k : ans) {
+        cout << k << endl;
+    }
     return 0;
 }
