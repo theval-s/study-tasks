@@ -1,1 +1,2 @@
 D:\GitRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\x64\Debug\Lab5.exe
+D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\x64\Debug\Lab5.exe

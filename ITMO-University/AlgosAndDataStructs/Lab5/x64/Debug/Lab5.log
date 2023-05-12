@@ -1,3 +1,4 @@
 ﻿  Lab5.cpp
-D:\GitRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\Lab5.cpp(6,17): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-  Lab5.vcxproj -> D:\GitRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\x64\Debug\Lab5.exe
+D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\Lab5.cpp(6,17): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\Lab5.cpp(122,39): warning C4267: 'argument': conversion from 'size_t' to 'int', possible loss of data
+  Lab5.vcxproj -> D:\GithubRepos\study-tasks\ITMO-University\AlgosAndDataStructs\Lab5\x64\Debug\Lab5.exe
