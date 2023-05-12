@@ -97,7 +97,7 @@ int plugin_process_file(const char *fname,
     /*for(int i = 0; i < 4; i++){
         printf("nums[X]:%X\tbe[X]:%X\tle[X]:%X\n",nums[i], (unsigned char)be[i], (unsigned char)le[i]);
     }*/
-    int found_flag = 0;
+    int found_flag = 1;
     FILE *fp = fopen(fname, "rb");
     if (!fp)
     {
