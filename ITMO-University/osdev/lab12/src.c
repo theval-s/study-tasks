@@ -16,9 +16,8 @@
 -A - "and" option for plugins
 -N - "not" option for plugins
 -P <dir> - plugin directory
-
-notable: check examples in GDrive
 */
+
 void cleanup(struct plugin_option *, process_file_t *, void **, size_t, struct plugin_info *);
 int main(int argc, char *argv[])
 {
@@ -44,15 +43,15 @@ int main(int argc, char *argv[])
     sprintf(libpath, "%s/", prog_path);
 
     size_t in_opts_c = 0;
-    struct plugin_option *in_opts = NULL; // allocated in open_libs func - need to free it later
-    process_file_t *proc_file_arr = NULL; // allocated in open_libs! free it later
+    struct plugin_option *in_opts = NULL; // allocated in open_libs func
+    process_file_t *proc_file_arr = NULL; // allocated in open_libs
     size_t proc_file_c = 0;
     void **dls = NULL;
     struct plugin_info *pi = NULL;
     size_t libcnt = 0;
     short narg = 0, oaarg = 0;
     for (int i = 1; i < argc; i++)
-    {
+    { // manually checking for -P to change dir before getopt_long
         if (strlen(argv[i]) == 2 && argv[i][0] == '-' && argv[i][1] != '-')
         {
             if (argv[i][1] == 'P')
@@ -74,6 +73,7 @@ int main(int argc, char *argv[])
     {
         long_options[i] = in_opts[i].opt;
     }
+    // making the option array
     long_options[in_opts_c] = (struct option){0, 0, 0, 0};
     struct option **walk_opts = calloc(libcnt, sizeof(struct option *));
     size_t *walk_opts_len = calloc(libcnt, sizeof(size_t));
@@ -107,10 +107,11 @@ int main(int argc, char *argv[])
             switch (c)
             {
             case 'P':
-                continue;
+                // уже разобрано
+                break;
             case 'v':
                 printf(
-                    "Lab1.2 version 1.0 Волков Сергей Алексеевич N32471 "
+                    "Lab1.2 version 1.01 Волков Сергей Алексеевич N32471 "
                     "19 вариант\n");
                 if (walk_opts)
                 {
@@ -182,7 +183,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            int found_lib = 0;
+            int found_lib = 0; // нашли опцию или нет, а также проверка на совп. имена
             for (size_t i = 0; i < libcnt; i++)
             {
                 for (size_t j = 0; j < pi[i].sup_opts_len; j++)
@@ -213,12 +214,31 @@ int main(int argc, char *argv[])
                         cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
                         exit(EXIT_FAILURE);
                     }
+
+                    //сохранение опций в отдельный массив
                     walk_opts[i][walk_opts_len[i] - 1] = long_options[option_index];
                     if ((long_options + option_index)->has_arg)
                     {
                         walk_opts[i][walk_opts_len[i] - 1].flag = (int *)(optarg);
                     }
                     break;
+                }
+                else if (found_lib > 1)
+                {//если нашли одинаковые опции
+                    fprintf(stderr, "Error: matching option names in libs! Opt name: %s\n", long_options[option_index].name);
+                    cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                    if (walk_opts)
+                    {
+                        for (size_t z = 0; z < libcnt; z++)
+                        {
+                            if (walk_opts[z])
+                                free(walk_opts[z]);
+                        }
+                        free(walk_opts);
+                    }
+                    if (walk_opts_len)
+                        free(walk_opts_len);
+                    exit(EXIT_FAILURE);
                 }
             }
         }
@@ -265,7 +285,6 @@ int main(int argc, char *argv[])
         }
     }
     walking(walk_opts, walk_opts_len, argv[argc - 1], proc_file_arr, proc_file_c, narg, oaarg);
-
     cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
     if (walk_opts)
     {
@@ -280,7 +299,7 @@ int main(int argc, char *argv[])
         free(walk_opts_len);
     return 0;
 }
-
+/// freeing args
 void cleanup(struct plugin_option *in_opts, process_file_t *proc_file_arr, void **dls, size_t libcnt, struct plugin_info *pi)
 {
     if (in_opts != NULL)

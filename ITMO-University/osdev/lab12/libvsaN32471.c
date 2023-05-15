@@ -44,6 +44,7 @@ int plugin_process_file(const char *fname,
         return -1;
     }
 
+    //получение аргумента из options
     char *ip = NULL;
     for (size_t i = 0; i < in_opts_len; i++)
     {
@@ -63,6 +64,7 @@ int plugin_process_file(const char *fname,
         errno = EINVAL;
         return -1;
     }
+    //перевод в числа
     char *endptr;
     unsigned char nums[4];
     char *t = strtok_r(ip, ".", &endptr);
@@ -97,7 +99,6 @@ int plugin_process_file(const char *fname,
     /*for(int i = 0; i < 4; i++){
         printf("nums[X]:%X\tbe[X]:%X\tle[X]:%X\n",nums[i], (unsigned char)be[i], (unsigned char)le[i]);
     }*/
-    int found_flag = 1;
     FILE *fp = fopen(fname, "rb");
     if (!fp)
     {
@@ -106,15 +107,15 @@ int plugin_process_file(const char *fname,
     }
     unsigned char buf[4];
     int fr = fread(buf, sizeof(char), 4, fp);
-    if (fr == 0)
+    if (fr < 4)
     {
         if (!feof(fp))
             fprintf(stderr, "IPv4BIN: fread error in file %s\n", fname);
         else
         {
-            // file empty :o
+            // file empty or not enough bytes :/
             fclose(fp);
-            return 0;
+            return 1;
         }
     }
     // printf("first 4 bytes of file: %X%X%X%X\n", (unsigned char)buf[0],(unsigned char)buf[1],(unsigned char)buf[2],(unsigned char)buf[3]);
@@ -126,6 +127,7 @@ int plugin_process_file(const char *fname,
         fclose(fp);
         return 0;
     }
+    //can be changed for do {} while
     while (!feof(fp))
     {
         char t[1];
@@ -136,7 +138,7 @@ int plugin_process_file(const char *fname,
                 fprintf(stderr, "IPv4BIN: fread error in file %s\n", fname);
             else
             {
-                // file empty :o
+                // file empty or error:o
                 fclose(fp);
                 return 1;
             }
@@ -153,6 +155,6 @@ int plugin_process_file(const char *fname,
         }
     }
     fclose(fp);
-    return found_flag;
+    return 1;
 }
 // jealousy turning saints into the sea

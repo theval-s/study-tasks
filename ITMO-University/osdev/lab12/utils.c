@@ -6,9 +6,10 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #define PATH_MAX 4096
-
+/// opens all libraries using refs to objects to save them without making them global variables 
 void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt, struct plugin_info **pi)
 {
+
     DIR *d = opendir(dir);
     if (d == NULL)
     {
@@ -109,6 +110,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
     closedir(d);
 }
 
+//checks all files using plugin_process_file functions array
 void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg)
 {
     DIR *d = opendir(dir);
@@ -152,7 +154,7 @@ void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_fi
                 char newdir[PATH_MAX];
                 sprintf(newdir, "%s/%s", dir, p->d_name); //
                 // new directory for opendir() and readdir()
-                // printf("NEW DIR%s\n", newdir);
+                // printf("NEW DIR%s\n", newdir); //debug
                 walking(in_opts, in_opts_len, newdir, proc_file, proc_file_c, narg, oaarg);
             }
             else
@@ -170,12 +172,19 @@ void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_fi
                     if (in_opts[i] == NULL)
                         continue;
                     found_prev = found;
-                    found = (proc_file[i](p->d_name, in_opts[i], in_opts_len[i]) == 0 ? 1 : 0);
-                    if (found == -1)
+                    found = proc_file[i](p->d_name, in_opts[i], in_opts_len[i]);
+                    if (found < 0)
                     {
                         fprintf(stderr, "Error in lib №%ld! :%s\n", i, strerror(errno));
+                        if(errno == EINVAL || errno == ERANGE){
+                            //skip library if there is error with arguments (elss error msg)
+                            fprintf(stderr, "Skipping it because of invalid arguments...\n");
+                            free(in_opts[i]);
+                            in_opts[i] = NULL;
+                        }
+                        errno = 0;
                         found = found_prev;
-                    }
+                    } else  found = (found == 0) ? 1 : 0;
                     if (oaarg == 0 && found == 0)
                         break;
                     else if (oaarg == 1 && found == 1)
