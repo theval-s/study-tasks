@@ -33,7 +33,22 @@
 // -h - help
 // LAB2DEBUG env - debug mode
 */
+
+//TODO: 
+//	options and env variables -- done
+//	make socket connection -- done
+//	threading of socket connectivity -- kind of?
+//	add set data structure
+//	work with signals
+
 void help(FILE *);
+typedef struct{
+	int serverSocket;
+	struct sockaddr_storage serverStorage;
+	socklen_t addr_size;
+	size_t sleep_time;
+} socketinfo;
+void* handle_request(void *arg);
 
 int main(int argc, char **argv)
 {
@@ -82,7 +97,7 @@ int main(int argc, char **argv)
 			fprintf(outs, "New port:%s\n", port);
 			break;
 		case 'v':
-			fprintf(outs,"lab2server: Version 0.07\nAuthor: Volkov S.A. N32471\n");
+			fprintf(outs,"lab2server: Version 0.1\nAuthor: Volkov S.A. N32471\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'h':
@@ -100,6 +115,8 @@ int main(int argc, char **argv)
 	//getopt and env done - now for the main part
 	srand(time(NULL));
 	//for GET^ might want to move somewhere else for better randomness??
+	//TODO: add signals catching
+
 	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	if(serverSocket < 0){
 		fprintf(stderr, "ERROR: Socket creation failed: %s\n", strerror(errno));
@@ -107,42 +124,42 @@ int main(int argc, char **argv)
 	}
 	uint16_t porti = (uint16_t)strtol(port, NULL, 10);
 	struct sockaddr_in server = {0};
-	struct sockaddr_storage serverStorage;
+	struct sockaddr_storage serverStorage = {0};
 	socklen_t addr_size;	
 	server.sin_family = AF_INET;
 	server.sin_port = htons(porti);
 	server.sin_addr.s_addr = inet_addr(ip);
 	int t = 0;
+	
+	t = setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+	if(t < 0){
+		fprintf(stderr, "ERROR: Set sock opt failed: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 	t = bind(serverSocket, (struct sockaddr *)&server, sizeof(server));
 	if(t < 0){
 		fprintf(stderr, "ERROR: Socket bind failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
+	
+	setvbuf(stdout, NULL, _IONBF, 0);
 	while(1){
 		t = listen(serverSocket, 10);
 		if(t < 0){
 			fprintf(stderr, "ERROR: Socket listen failed: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
 		}	
+		//add pthreads
+		pthread_t tid;
 		addr_size = sizeof(serverStorage);
-		int clientSocket = accept(serverSocket, (struct sockaddr *)&serverStorage, &addr_size);
-		if(clientSocket < 0){
-			fprintf(stderr, "ERROR: Client socket accept failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
+		socketinfo args = {serverSocket, serverStorage, addr_size, wait_time};
+		t = pthread_create(&tid, NULL, handle_request, &args);
+		if (t < 0){
+			fprintf(stderr, "ERROR: Thread creation failed%s\n", strerror(errno));
+			errno = 0;
+			continue;
 		}
-		char buffer[1024];
-		t = read(clientSocket, buffer, 1024);
-		if(t>0) printf("Received!!!%s\n", buffer);
-		if(t<0){
-			fprintf(stderr, "ERROR: Receive failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		t = write(clientSocket, buffer, 1024);
-		if(t<0){
-			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		close(clientSocket);
+		
 	}
 	close(serverSocket);
 	return 0;
@@ -159,4 +176,31 @@ void help(FILE *out)
 	fprintf(out, "-v - version\n");
 	fprintf(out, "-h - help\n");
 	fprintf(out, "LAB2DEBUG env - debug mode\n");
+}
+
+void* handle_request(void *ptr){
+	socketinfo *arg = ptr;
+	int clientSocket = accept(arg->serverSocket, (struct sockaddr *)&(arg->serverStorage), &(arg->addr_size));
+		if(clientSocket < 0){
+			fprintf(stderr, "ERROR: Client socket accept failed!: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		char buffer[1024];
+		int t = read(clientSocket, buffer, 1024);
+		if(t>0) printf("Received!!!%s\n", buffer);
+		if(t<0){
+			fprintf(stderr, "ERROR: Receive failed!: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
+		sleep(arg->sleep_time);
+
+		t = write(clientSocket, buffer, 1024);
+		if(t<0){
+			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		close(clientSocket);
+		//need to deal with closing/cancelling threads... :(
+		return NULL;
 }

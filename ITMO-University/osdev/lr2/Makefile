@@ -5,7 +5,7 @@ all: server client
 clean:
 	rm -rf *.o server client lab2vsaN32471.tar.gz
 server: server.c
-	gcc -o server $^ $(CFLAGS)
+	gcc -o server $^ $(CFLAGS) -pthread
 client: client.c
 	gcc -o client $^ $(CFLAGS)
 pack:
