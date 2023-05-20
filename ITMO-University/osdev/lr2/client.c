@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 			printf("New port:%s\n", port);
 			break;
 		case 'v':
-			printf("lab2client: Version 0.01\nAuthor: Volkov S.A. N32471\n");
+			printf("lab2client: Version 0.2\nAuthor: Volkov S.A. N32471\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'h':
@@ -48,40 +48,56 @@ int main(int argc, char **argv)
 		}
 	}
 	int clientSocket;
-	char buffer[1024] = "lox123124";
 	struct sockaddr_in serverAddr = {0};
-	//socklen_t addr_size;
+	// socklen_t addr_size;
 
-	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if(clientSocket < 0){
-		fprintf(stderr, "Failed to create client socket! %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}	
 	uint16_t porti = (uint16_t)strtol(port, NULL, 10);
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(porti);
 	serverAddr.sin_addr.s_addr = inet_addr(ip);
 
-	int t = connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
-	if(t < 0){
-		fprintf(stderr, "Failed to connect socket! %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}	
-	t = write(clientSocket, buffer, 1024);
-	if(t < 0){
-		fprintf(stderr, "Failed to send!%s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}	
-	//t = recv(clientSocket, buffer, 1024, 0);
-	t = read(clientSocket, buffer, 1024);
-	if(t < 0){
-		fprintf(stderr, "Failed to receive!%s\n", strerror(errno));
-		exit(EXIT_FAILURE);
-	}	
-	
-	printf("Data received (%d bytes): [%s]\n", (int)t, buffer);   
+	while (1)
+	{
+		clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+		if (clientSocket < 0)
+		{
+			fprintf(stderr, "Failed to create client socket! %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		int t = connect(clientSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
+		if (t < 0)
+		{
+			fprintf(stderr, "Failed to connect socket! %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+		char buffer[1024];
+		if (fgets(buffer, 1024, stdin) != NULL)
+		{
+			if (buffer[strlen(buffer) - 1] != '\n')
+			{
+				fprintf(stderr, "MSG too long! Max message size:%d\n", 1024);
+				continue;
+			}
+			t = send(clientSocket, buffer, 1024, 0);
+			if (t < 0)
+			{
+				fprintf(stderr, "Failed to send!%s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			char buff2[1024];
+			t = recv(clientSocket, buff2, 1024, 0);
+			if (t < 0)
+			{
+				fprintf(stderr, "Failed to receive!%s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			printf("Data received (%d bytes): %s", (int)t, buff2);
+		}
+		else
+			fprintf(stderr, "Failed to gets from stdin!\n");
+		close(clientSocket);
+	}
 
-	close(clientSocket);
 	return 0;
 }
 

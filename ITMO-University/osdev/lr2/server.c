@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <time.h>
-
+#define MSG_SIZE 1024
 /*		LAB2: Server part
 // 	Tasks: using TCP and pthread make a server to evaluate next requests:
 // -ADD num (num is float or integer) - add value to a set
@@ -34,26 +34,41 @@
 // LAB2DEBUG env - debug mode
 */
 
-//TODO: 
+// TODO:
 //	options and env variables -- done
 //	make socket connection -- done
-//	threading of socket connectivity -- kind of?
-//	add set data structure
+//	threading of socket connectivity -- kind of? need mutex
+//	add set data structure -- kind of done, might add sort?
 //	work with signals
-
+//	log file
+// misc: check if i received the whole message?
 void help(FILE *);
-typedef struct{
+typedef struct
+{
 	int serverSocket;
-	struct sockaddr_storage serverStorage;
-	socklen_t addr_size;
+	int clientSocket;
 	size_t sleep_time;
 } socketinfo;
-void* handle_request(void *arg);
+
+typedef struct
+{
+	double *arr;
+	size_t len;
+	// char ip can be added to identify? need to change init that way
+} set_t;
+
+set_t Set = {NULL, 0};
+
+char *set_get();	   // question: can get be done as non-blocking op if we pass a copy at the moment of the call? will that be correct?
+char *set_add(double); // return OK if everything is correct
+
+void *handle_request(void *arg);
 
 int main(int argc, char **argv)
 {
 	size_t wait_time = (getenv("LAB2WAIT") != NULL) ? strtol(getenv("LAB2WAIT"), NULL, 10) : 0;
-	if(errno != 0){
+	if (errno != 0)
+	{
 		fprintf(stderr, "Error: LAB2WAIT not NULL, but couldn't parse value (errno:%s).\n Using default value...\n", strerror(errno));
 		wait_time = 0;
 		errno = 0;
@@ -62,7 +77,7 @@ int main(int argc, char **argv)
 	char *ip = (getenv("LAB2ADDR") != NULL) ? getenv("LAB2ADDR") : "127.0.0.1";
 	char *port = (getenv("LAB2PORT") != NULL) ? getenv("LAB2PORT") : "8008";
 	FILE *outs = stdout;
-	//^ can change to log file when needed! 
+	//^ can change to log file when needed!
 	int c;
 	while ((c = getopt(argc, argv, "w:dl:a:p:vh")) != -1)
 	{
@@ -97,7 +112,7 @@ int main(int argc, char **argv)
 			fprintf(outs, "New port:%s\n", port);
 			break;
 		case 'v':
-			fprintf(outs,"lab2server: Version 0.1\nAuthor: Volkov S.A. N32471\n");
+			fprintf(outs, "lab2server: Version 0.3\nAuthor: Volkov S.A. N32471\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'h':
@@ -109,57 +124,70 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
-	if(getenv("LAB2DEBUG")!=NULL){
+	if (getenv("LAB2DEBUG") != NULL)
+	{
 		fprintf(stderr, "DEBUG:\tVariable values:\nWait time:%ld\nLog path:%s\nIP:%s\nPort:%s\n", wait_time, logpath, ip, port);
 	}
-	//getopt and env done - now for the main part
+	// getopt and env done - now for the main part
 	srand(time(NULL));
-	//for GET^ might want to move somewhere else for better randomness??
-	//TODO: add signals catching
+	// for GET^ might want to move somewhere else for better randomness??
+	// TODO: add signals catching
 
 	int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-	if(serverSocket < 0){
+	if (serverSocket < 0)
+	{
 		fprintf(stderr, "ERROR: Socket creation failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	uint16_t porti = (uint16_t)strtol(port, NULL, 10);
 	struct sockaddr_in server = {0};
 	struct sockaddr_storage serverStorage = {0};
-	socklen_t addr_size;	
+	socklen_t addr_size;
 	server.sin_family = AF_INET;
 	server.sin_port = htons(porti);
 	server.sin_addr.s_addr = inet_addr(ip);
 	int t = 0;
-	
-	t = setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-	if(t < 0){
+
+	t = setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+	if (t < 0)
+	{
 		fprintf(stderr, "ERROR: Set sock opt failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 	t = bind(serverSocket, (struct sockaddr *)&server, sizeof(server));
-	if(t < 0){
+	if (t < 0)
+	{
 		fprintf(stderr, "ERROR: Socket bind failed: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	
+
 	setvbuf(stdout, NULL, _IONBF, 0);
-	while(1){
+	while (1)
+	{
 		t = listen(serverSocket, 10);
-		if(t < 0){
+		if (t < 0)
+		{
 			fprintf(stderr, "ERROR: Socket listen failed: %s\n", strerror(errno));
 			exit(EXIT_FAILURE);
-		}	
-		//add pthreads
+		}
+
+		int clientSocket = accept(serverSocket, (struct sockaddr *)&serverStorage, &addr_size);
+		if (clientSocket < 0)
+		{
+			fprintf(stderr, "ERROR: Client socket accept failed!: %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
 		pthread_t tid;
 		addr_size = sizeof(serverStorage);
-		socketinfo args = {serverSocket, serverStorage, addr_size, wait_time};
+		socketinfo args = {serverSocket, clientSocket, wait_time};
 		t = pthread_create(&tid, NULL, handle_request, &args);
-		if (t < 0){
+		if (t < 0)
+		{
 			fprintf(stderr, "ERROR: Thread creation failed%s\n", strerror(errno));
 			errno = 0;
 			continue;
 		}
-		
+		// else thread_detach(t);
 	}
 	close(serverSocket);
 	return 0;
@@ -167,40 +195,124 @@ int main(int argc, char **argv)
 
 void help(FILE *out)
 {
-	fprintf(out, "\t\tOptions:\n");
-	fprintf(out, "-w N (or LAB2WAIT) - imitation of hard work by freezing the thread for N seconds - default [0]\n");
-	fprintf(out, "-d - daemon mode\n");
-	fprintf(out, "-l /path/ (or LAB2LOGFILE) - path to log file - default [/tmp/lab2.log]\n");
-	fprintf(out, "-a xxx.xxx.xxx.xxx (or LAB2ADDR) - listening ip address - default [127.0.0.1]\n");
-	fprintf(out, "-p port (or LAB2PORT) - listening port - default [8008]\n");
-	fprintf(out, "-v - version\n");
-	fprintf(out, "-h - help\n");
-	fprintf(out, "LAB2DEBUG env - debug mode\n");
+	fprintf(out, "\t\tOptions:\n"
+				 "-w N (or LAB2WAIT) - imitation of hard work by freezing the thread for N seconds - default [0]\n"
+				 "-d - daemon mode\n"
+				 "-l /path/ (or LAB2LOGFILE) - path to log file - default [/tmp/lab2.log]\n"
+				 "-a xxx.xxx.xxx.xxx (or LAB2ADDR) - listening ip address - default [127.0.0.1]\n"
+				 "-p port (or LAB2PORT) - listening port - default [8008]\n"
+				 "-v - version\n"
+				 "-h - help\n"
+				 "LAB2DEBUG env - debug mode\n");
 }
 
-void* handle_request(void *ptr){
+char *set_get()
+{
+	// add verification by IP if necessary
+	// i think it can be done using hashmap?
+	char tmp[MSG_SIZE];
+	if (Set.len == 0)
+	{
+		sprintf(tmp, "ERROR %d\n", ENODATA);
+	}
+	else
+	{
+		sprintf(tmp, "%f\n", Set.arr[rand() % Set.len]);
+	}
+	return strdup(tmp);
+}
+char *set_add(double value)
+{
+	// add mutex locking
+	// i dont have to sort it, do i????
+	char tmp[MSG_SIZE];
+	short found = 0;
+	for (size_t i = 0; i < Set.len; i++)
+	{
+		if (Set.arr[i] == value)
+			found++;
+	}
+	if (found == 0 || Set.len == 0)
+	{
+		Set.arr = realloc(Set.arr, sizeof(double) * (++Set.len));
+		Set.arr[Set.len - 1] = value;
+		sprintf(tmp, "OK\n");
+	}
+	else
+	{
+		// if found > 0
+		sprintf(tmp, "ERROR %d\n", EPERM);
+	}
+	return strdup(tmp);
+}
+
+void *handle_request(void *ptr)
+{
 	socketinfo *arg = ptr;
-	int clientSocket = accept(arg->serverSocket, (struct sockaddr *)&(arg->serverStorage), &(arg->addr_size));
-		if(clientSocket < 0){
-			fprintf(stderr, "ERROR: Client socket accept failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-		char buffer[1024];
-		int t = read(clientSocket, buffer, 1024);
-		if(t>0) printf("Received!!!%s\n", buffer);
-		if(t<0){
-			fprintf(stderr, "ERROR: Receive failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
 
-		sleep(arg->sleep_time);
+	char buffer[MSG_SIZE];
+	int t = recv(arg->clientSocket, buffer, MSG_SIZE, 0);
+	if (t > 0)
+		printf("Received:%s\n", buffer);
+	if (t < 0)
+	{
+		fprintf(stderr, "ERROR: Receive failed!: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
 
-		t = write(clientSocket, buffer, 1024);
-		if(t<0){
+	sleep(arg->sleep_time);
+	if (strncmp("ADD", buffer, 3) == 0)
+	{
+		char *str_end;
+		printf("val for strtod: %s", buffer + 3);
+		double val = strtod(buffer + 3, &str_end);
+		//TODO: Add checking if val is converted correctly (using str_end)
+		char *ans = set_add(val);
+		t = send(arg->clientSocket, ans, strlen(ans)+1,0);
+		printf("writing:%s\n", ans);
+		if (t < 0)
+		{
 			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
 		}
-		close(clientSocket);
-		//need to deal with closing/cancelling threads... :(
-		return NULL;
+		free(ans);
+		// add mutex locking
+
+		if (errno == ERANGE)
+		{
+			fprintf(stderr, "Error: %s\n", strerror(errno));
+			errno = 0;
+		}
+	}
+	else if (strncmp("GET", buffer, 3) == 0)
+	{
+		char *ans = set_get();
+		printf("writing:%s\n", ans);
+		t = send(arg->clientSocket, ans, strlen(ans)+1, 0);
+		if (t < 0)
+		{
+			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
+		}
+		free(ans);
+	}
+	else
+	{
+		char ans[MSG_SIZE];
+		// cause i want ans to be modifiable? might find a way to make it more pretty
+		sprintf(ans, "ERROR %d\n", EINVAL);
+		t = send(arg->clientSocket, ans, strlen(ans)+1, 0);
+		if (t < 0)
+		{
+			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
+		}
+	}
+
+	// t = write(clientSocket, buffer, 1024);
+	// if(t<0){
+	//	fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
+	//	exit(EXIT_FAILURE);
+	// }
+
+	close(arg->clientSocket);
+	pthread_exit(NULL);
+	return NULL;
 }
