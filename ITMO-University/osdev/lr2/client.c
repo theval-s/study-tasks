@@ -22,7 +22,10 @@ int main(int argc, char **argv)
 	char *port = (getenv("LAB2PORT") != NULL) ? getenv("LAB2PORT") : "8008";
 
 	int c;
-	while ((c = getopt(argc, argv, "a:p:vh")) != -1)
+	double add = 0;
+	int testv = 0;
+	int get = 0;
+	while ((c = getopt(argc, argv, "a:p:vhgd:")) != -1)
 	{
 		switch (c)
 		{
@@ -41,6 +44,22 @@ int main(int argc, char **argv)
 		case 'h':
 			help();
 			exit(EXIT_SUCCESS);
+			break;
+		case 'd': //ADD request
+			if(testv == 1){
+				fprintf(stderr, "Only 1 test request per launch!\n");
+				exit(EXIT_FAILURE);
+			}
+			add = strtod(optarg, NULL);
+			testv = 1;
+			break;
+		case 'g': //ADD request
+			if(testv == 1){
+				fprintf(stderr, "Only 1 test request per launch!\n");
+				exit(EXIT_FAILURE);
+			}
+			get = 1;
+			testv = 1;
 			break;
 		default:
 			printf("Failed to parse short options!\n");
@@ -71,7 +90,28 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 		char buffer[1024];
-		if (fgets(buffer, 1024, stdin) != NULL)
+		if(testv==1){
+			if (get == 1) sprintf(buffer, "GET");
+			else sprintf(buffer, "ADD %f", add);
+			t = send(clientSocket, buffer, 1024, 0);
+			if (t < 0)
+			{
+				fprintf(stderr, "Failed to send!%s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			char buff2[1024];
+			t = recv(clientSocket, buff2, 1024, 0);
+			if (t < 0)
+			{
+				fprintf(stderr, "Failed to receive!%s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+			printf("Data received (%d bytes): %s", (int)t, buff2);
+			close(clientSocket);
+			exit(EXIT_SUCCESS);
+
+		}
+		else if (fgets(buffer, 1024, stdin) != NULL)
 		{
 			if (buffer[strlen(buffer) - 1] != '\n')
 			{

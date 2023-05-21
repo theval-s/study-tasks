@@ -37,7 +37,7 @@
 // TODO:
 //	options and env variables -- done
 //	make socket connection -- done
-//	threading of socket connectivity -- kind of? need mutex
+//	threading of socket connectivity -- kind of? some errors
 //	add set data structure -- kind of done, might add sort?
 //	work with signals
 //	log file
@@ -63,6 +63,8 @@ char *set_get();	   // question: can get be done as non-blocking op if we pass a
 char *set_add(double); // return OK if everything is correct
 
 void *handle_request(void *arg);
+
+pthread_mutex_t set_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv)
 {
@@ -187,9 +189,10 @@ int main(int argc, char **argv)
 			errno = 0;
 			continue;
 		}
-		// else thread_detach(t);
+		else pthread_detach(t);
 	}
 	close(serverSocket);
+	pthread_mutex_destroy(&set_mutex);
 	return 0;
 }
 
@@ -217,7 +220,9 @@ char *set_get()
 	}
 	else
 	{
+		pthread_mutex_lock(&set_mutex);
 		sprintf(tmp, "%f\n", Set.arr[rand() % Set.len]);
+		pthread_mutex_unlock(&set_mutex);
 	}
 	return strdup(tmp);
 }
@@ -225,6 +230,7 @@ char *set_add(double value)
 {
 	// add mutex locking
 	// i dont have to sort it, do i????
+	pthread_mutex_lock(&set_mutex);
 	char tmp[MSG_SIZE];
 	short found = 0;
 	for (size_t i = 0; i < Set.len; i++)
@@ -237,11 +243,13 @@ char *set_add(double value)
 		Set.arr = realloc(Set.arr, sizeof(double) * (++Set.len));
 		Set.arr[Set.len - 1] = value;
 		sprintf(tmp, "OK\n");
+		pthread_mutex_unlock(&set_mutex);
 	}
 	else
 	{
 		// if found > 0
 		sprintf(tmp, "ERROR %d\n", EPERM);
+		pthread_mutex_unlock(&set_mutex);
 	}
 	return strdup(tmp);
 }
@@ -256,15 +264,14 @@ void *handle_request(void *ptr)
 		printf("Received:%s\n", buffer);
 	if (t < 0)
 	{
-		fprintf(stderr, "ERROR: Receive failed!: %s\n", strerror(errno));
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "ERROR: Receive in thread failed!: %s\n", strerror(errno));
+		return NULL;
 	}
 
 	sleep(arg->sleep_time);
 	if (strncmp("ADD", buffer, 3) == 0)
 	{
 		char *str_end;
-		printf("val for strtod: %s", buffer + 3);
 		double val = strtod(buffer + 3, &str_end);
 		//TODO: Add checking if val is converted correctly (using str_end)
 		char *ans = set_add(val);
@@ -273,9 +280,9 @@ void *handle_request(void *ptr)
 		if (t < 0)
 		{
 			fprintf(stderr, "ERROR: Sending failed!: %s\n", strerror(errno));
+			return NULL;
 		}
 		free(ans);
-		// add mutex locking
 
 		if (errno == ERANGE)
 		{

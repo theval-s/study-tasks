@@ -1,7 +1,6 @@
 #!/bin/bash
 
-for i in $(seq 1 5)
+for i in $(seq 1 10)
 do	
-	./client &
+	./client -d $i &
 done
-return
