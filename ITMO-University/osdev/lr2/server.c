@@ -156,7 +156,7 @@ int main(int argc, char **argv)
 			printf("New port:%s\n", port);
 			break;
 		case 'v':
-			printf("lab2server: Version 0.9\nAuthor: Volkov S.A. N32471\n");
+			printf("lab2server: Version 0.95\nAuthor: Volkov S.A. N32471\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'h':
