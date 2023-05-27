@@ -14,6 +14,7 @@
 //
 //
 */
+int g_server_closed = 0;
 void help();
 
 int main(int argc, char **argv)
@@ -38,23 +39,25 @@ int main(int argc, char **argv)
 			printf("New port:%s\n", port);
 			break;
 		case 'v':
-			printf("lab2client: Version 0.2\nAuthor: Volkov S.A. N32471\n");
+			printf("lab2client: Version 0.5\nAuthor: Volkov S.A. N32471\n");
 			exit(EXIT_SUCCESS);
 			break;
 		case 'h':
 			help();
 			exit(EXIT_SUCCESS);
 			break;
-		case 'd': //ADD request
-			if(testv == 1){
+		case 'd': // ADD request
+			if (testv == 1)
+			{
 				fprintf(stderr, "Only 1 test request per launch!\n");
 				exit(EXIT_FAILURE);
 			}
 			add = strtod(optarg, NULL);
 			testv = 1;
 			break;
-		case 'g': //ADD request
-			if(testv == 1){
+		case 'g': // ADD request
+			if (testv == 1)
+			{
 				fprintf(stderr, "Only 1 test request per launch!\n");
 				exit(EXIT_FAILURE);
 			}
@@ -74,8 +77,11 @@ int main(int argc, char **argv)
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_port = htons(porti);
 	serverAddr.sin_addr.s_addr = inet_addr(ip);
-
-	while (1)
+	if (getenv("LAB2DEBUG") != NULL)
+	{
+		fprintf(stderr, "DEBUG:\t\tConnecting to:\n IP:%s\nPort:%s\n", ip, port);
+	}
+	while (g_server_closed == 0)
 	{
 		clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 		if (clientSocket < 0)
@@ -90,9 +96,12 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 		char buffer[1024];
-		if(testv==1){
-			if (get == 1) sprintf(buffer, "GET");
-			else sprintf(buffer, "ADD %f", add);
+		if (testv == 1)
+		{
+			if (get == 1)
+				sprintf(buffer, "GET");
+			else
+				sprintf(buffer, "ADD %f", add);
 			t = send(clientSocket, buffer, 1024, 0);
 			if (t < 0)
 			{
@@ -109,15 +118,24 @@ int main(int argc, char **argv)
 			printf("Data received (%d bytes): %s", (int)t, buff2);
 			close(clientSocket);
 			exit(EXIT_SUCCESS);
-
 		}
 		else if (fgets(buffer, 1024, stdin) != NULL)
 		{
+			if (strncmp(buffer, "EXIT", 4) == 0)
+			{
+				close(clientSocket);
+				break;
+			}
+			else if (strncmp(buffer, "CLOSE", 5) == 0){
+				g_server_closed++;
+			}
+			
 			if (buffer[strlen(buffer) - 1] != '\n')
 			{
 				fprintf(stderr, "MSG too long! Max message size:%d\n", 1024);
 				continue;
 			}
+
 			t = send(clientSocket, buffer, 1024, 0);
 			if (t < 0)
 			{
@@ -135,9 +153,9 @@ int main(int argc, char **argv)
 		}
 		else
 			fprintf(stderr, "Failed to gets from stdin!\n");
+
 		close(clientSocket);
 	}
-
 	return 0;
 }
 
@@ -148,5 +166,12 @@ void help()
 	printf("-p port (or LAB2PORT) - listening port - default [8008]\n");
 	printf("-v - version\n");
 	printf("-h - help\n");
+	printf("-g - send GET request to server and close client (test mode)");
+	printf("-d [value] - send ADD [value] request to server and close client (test mode)");
 	printf("LAB2DEBUG env - debug mode\n");
+	printf("\t\tAvailable commands to send to server:\n"
+		   "ADD [value] - add value to the set\n"
+		   "GET - get random value from the set\n"
+		   "CLOSE - close server\n"
+		   "EXIT - close client\n");
 }

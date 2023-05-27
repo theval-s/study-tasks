@@ -1,0 +1,5 @@
+==386828== HEAP SUMMARY:
+==386828==     in use at exit: 0 bytes in 0 blocks
+==386828==   total heap usage: 174 allocs, 174 frees, 18,072 bytes allocated
+==386828== 
+==386828== All heap blocks were freed -- no leaks are possible

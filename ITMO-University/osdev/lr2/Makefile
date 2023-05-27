@@ -1,5 +1,5 @@
 .PHONY: all clean pack
-CFLAGS=-Wall -Wextra -Werror
+CFLAGS=-Wall -Wextra -Werror -O3
 all: server client
 
 clean:
