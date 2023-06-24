@@ -7,7 +7,8 @@
 #include <dlfcn.h>
 #define PATH_MAX 4096
 /// opens all libraries using refs to objects to save them without making them global variables 
-void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt, struct plugin_info **pi)
+//void open_libs
+void open_libs(char *dir, size_t *plug_cnt, plug_t *plug_arr[])
 {
 
     DIR *d = opendir(dir);
@@ -64,31 +65,6 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
                     dlclose(dl);
                     continue;
                 }
-                (*pi) = realloc((*pi), sizeof(struct plugin_info) * ((*libcnt) + 1));
-                (*pi)[(*libcnt)] = plug_info;
-                (*in_opts_c) += plug_info.sup_opts_len;
-                (*in_opts) = realloc((*in_opts), (*in_opts_c) * sizeof(struct plugin_option));
-                if ((*in_opts) == NULL)
-                {
-                    fprintf(stderr, "Error! realloc() failed\n");
-                    dlclose(dl);
-                    if ((*dlibs))
-                    {
-                        for (size_t i = 0; i < (*libcnt); i++)
-                        {
-                            dlclose((*dlibs)[i]);
-                        }
-                        free((*dlibs));
-                    }
-                    free((*in_opts));
-                    free((*proc_file));
-                    exit(EXIT_FAILURE);
-                }
-                for (size_t i = 0; i < plug_info.sup_opts_len; i++)
-                {
-                    (*in_opts)[(*in_opts_c) - plug_info.sup_opts_len + i] = plug_info.sup_opts[i];
-                    // printf("added option to opts!%s \t%s\n", plug_info.sup_opts[i].opt.name, plug_info.sup_opts[i].opt_descr);
-                }
                 void *pf = dlsym(dl, "plugin_process_file");
                 if (pf == NULL)
                 {
@@ -96,12 +72,17 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
                     dlclose(dl);
                     continue;
                 }
-                (*proc_file_c)++;
-                (*proc_file) = realloc((*proc_file), (*proc_file_c) * sizeof(process_file_t));
-                (*proc_file)[(*proc_file_c) - 1] = (process_file_t)pf;
-                (*libcnt)++;
-                (*dlibs) = realloc((*dlibs), sizeof(dl) * (*libcnt));
-                (*dlibs)[(*libcnt) - 1] = dl;
+                
+                (*plug_arr) = realloc((*plug_arr), sizeof(plug_t) * ((*plug_cnt)+1));
+                if((*plug_arr) == NULL){
+                    fprintf(stderr, "CRITICAL: realloc failed in open_libs(%s)", dir);
+                    dlclose(dl);
+                    exit(EXIT_FAILURE);
+                }
+                (*plug_arr)[(*plug_cnt)].dl_handle = dl;
+                (*plug_arr)[(*plug_cnt)].proc_file = (process_file_t)pf;
+                (*plug_arr)[(*plug_cnt)].pi =plug_info;
+                (*plug_cnt)++;
             }
             else
                 fprintf(stderr, "Err: dlopen() failed for lib '%s'. Reason:%s\n", p->d_name, dlerror());
@@ -111,7 +92,7 @@ void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, pr
 }
 
 //checks all files using plugin_process_file functions array
-void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg)
+void walking(char *dir, struct option **in_opts, size_t *in_opts_len, plug_t plug_arr[], size_t libcnt, const int narg, const int oaarg)
 {
     DIR *d = opendir(dir);
     if (d == NULL)
@@ -155,7 +136,7 @@ void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_fi
                 sprintf(newdir, "%s/%s", dir, p->d_name); //
                 // new directory for opendir() and readdir()
                 // printf("NEW DIR%s\n", newdir); //debug
-                walking(in_opts, in_opts_len, newdir, proc_file, proc_file_c, narg, oaarg);
+                walking(newdir, in_opts, in_opts_len, plug_arr, libcnt, narg, oaarg);
             }
             else
             {
@@ -167,15 +148,15 @@ void walking(struct option **in_opts, size_t *in_opts_len, char *dir, process_fi
                 }
                 int found = 0;
                 int found_prev = 0;
-                for (size_t i = 0; i < proc_file_c; i++)
+                for (size_t i = 0; i < libcnt; i++)
                 {
                     if (in_opts[i] == NULL)
                         continue;
                     found_prev = found;
-                    found = proc_file[i](p->d_name, in_opts[i], in_opts_len[i]);
+                    found = plug_arr[i].proc_file(p->d_name, in_opts[i], in_opts_len[i]);
                     if (found < 0)
                     {
-                        fprintf(stderr, "Error in lib №%ld! :%s\n", i, strerror(errno));
+                        fprintf(stderr, "Error in lib №%ld! :%s\n", i+1, strerror(errno));
                         if(errno == EINVAL || errno == ERANGE){
                             //skip library if there is error with arguments (elss error msg)
                             fprintf(stderr, "Skipping it because of invalid arguments...\n");

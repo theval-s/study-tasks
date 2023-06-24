@@ -18,9 +18,10 @@
 -P <dir> - plugin directory
 */
 
-void cleanup(struct plugin_option *, process_file_t *, void **, size_t, struct plugin_info *);
+void cleanup(size_t libcnt, plug_t plug_arr[]);
 int main(int argc, char *argv[])
 {
+
     // to change cwd to program folder (to search for libs)
     char prog_path[PATH_MAX] = "";
     short cnt = 0;
@@ -42,13 +43,8 @@ int main(int argc, char *argv[])
     char libpath[PATH_MAX];
     sprintf(libpath, "%s/", prog_path);
 
-    size_t in_opts_c = 0;
-    struct plugin_option *in_opts = NULL; // allocated in open_libs func
-    process_file_t *proc_file_arr = NULL; // allocated in open_libs
-    size_t proc_file_c = 0;
-    void **dls = NULL;
-    struct plugin_info *pi = NULL;
     size_t libcnt = 0;
+    plug_t *plug_arr = NULL;
     short narg = 0, oaarg = 0;
     for (int i = 1; i < argc; i++)
     { // manually checking for -P to change dir before getopt_long
@@ -59,7 +55,7 @@ int main(int argc, char *argv[])
                 if (strlen(argv[i + 1]) > PATH_MAX)
                 {
                     fprintf(stderr, "Argument after '-P' too long!");
-                    cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                    cleanup(libcnt, plug_arr);
                     exit(EXIT_FAILURE);
                 }
                 else
@@ -67,16 +63,32 @@ int main(int argc, char *argv[])
             }
         }
     }
-    open_libs(&in_opts, &in_opts_c, libpath, &proc_file_arr, &proc_file_c, &dls, &libcnt, &pi);
+    open_libs(libpath, &libcnt, &plug_arr);
+
+    size_t in_opts_c = 0;
+    for (size_t i = 0; i < libcnt; i++)
+        in_opts_c += plug_arr[i].pi.sup_opts_len;
     struct option long_options[in_opts_c + 1];
-    for (size_t i = 0; i < in_opts_c; i++)
+    in_opts_c = 0;
+    for (size_t i = 0; i < libcnt; i++)
     {
-        long_options[i] = in_opts[i].opt;
+        for (size_t j = 0; j < plug_arr[i].pi.sup_opts_len; j++)
+        {
+            long_options[in_opts_c++] = plug_arr[i].pi.sup_opts[j].opt;
+        }
     }
     // making the option array
     long_options[in_opts_c] = (struct option){0, 0, 0, 0};
     struct option **walk_opts = calloc(libcnt, sizeof(struct option *));
+    if(!walk_opts){
+        fprintf(stderr, "CRITICAL: failed to calloc() walk_opts\n");
+        exit(EXIT_FAILURE);
+    }
     size_t *walk_opts_len = calloc(libcnt, sizeof(size_t));
+    if(!walk_opts_len){
+        fprintf(stderr, "CRITICAL: failed to calloc() walk_opts_len\n");
+        exit(EXIT_FAILURE);
+    }
     if (walk_opts == NULL || walk_opts_len == NULL)
     {
         printf("Malloc failed! Exiting...");
@@ -91,7 +103,7 @@ int main(int argc, char *argv[])
         }
         if (walk_opts_len)
             free(walk_opts_len);
-        cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+        cleanup(libcnt, plug_arr);
         exit(EXIT_FAILURE);
     }
     int option_index = 0;
@@ -123,7 +135,7 @@ int main(int argc, char *argv[])
                     free(walk_opts);
                 }
                 free(walk_opts_len);
-                cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                cleanup(libcnt, plug_arr);
                 exit(EXIT_SUCCESS);
                 break;
             case 'h':
@@ -138,9 +150,14 @@ int main(int argc, char *argv[])
                     "If LAB1DEBUG environment variable is set - "
                     "debug mode\n");
                 printf("available plugin options: \n");
-                for (size_t i = 0; i < in_opts_c; i++)
+                for (size_t i = 0; i < libcnt; i++)
                 {
-                    printf("\t --%s \t%s\n", in_opts[i].opt.name, in_opts[i].opt_descr);
+                    printf("plugin №%ld:\n", i + 1);
+                    for (size_t j = 0; j < plug_arr[i].pi.sup_opts_len; j++)
+                    {
+                        printf("--%s\t\t%s\n", plug_arr[i].pi.sup_opts[j].opt.name, plug_arr[i].pi.sup_opts[j].opt_descr);
+                    }
+                    printf("\n");
                 }
                 if (walk_opts)
                 {
@@ -152,7 +169,7 @@ int main(int argc, char *argv[])
                     free(walk_opts);
                 }
                 free(walk_opts_len);
-                cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                cleanup(libcnt, plug_arr);
                 exit(EXIT_SUCCESS);
                 break;
             case 'O':
@@ -176,7 +193,7 @@ int main(int argc, char *argv[])
                     free(walk_opts);
                 }
                 free(walk_opts_len);
-                cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                cleanup(libcnt, plug_arr);
                 exit(EXIT_FAILURE);
                 break;
             }
@@ -186,9 +203,9 @@ int main(int argc, char *argv[])
             int found_lib = 0; // нашли опцию или нет, а также проверка на совп. имена
             for (size_t i = 0; i < libcnt; i++)
             {
-                for (size_t j = 0; j < pi[i].sup_opts_len; j++)
+                for (size_t j = 0; j < plug_arr[i].pi.sup_opts_len; j++)
                 {
-                    if (strcmp(long_options[option_index].name, pi[i].sup_opts[j].opt.name) == 0)
+                    if (strcmp(long_options[option_index].name, plug_arr[i].pi.sup_opts[j].opt.name) == 0)
                     {
                         found_lib++;
                         break;
@@ -211,11 +228,11 @@ int main(int argc, char *argv[])
                             free(walk_opts);
                         }
                         free(walk_opts_len);
-                        cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                        cleanup(libcnt, plug_arr);
                         exit(EXIT_FAILURE);
                     }
 
-                    //сохранение опций в отдельный массив
+                    // сохранение опций в отдельный массив
                     walk_opts[i][walk_opts_len[i] - 1] = long_options[option_index];
                     if ((long_options + option_index)->has_arg)
                     {
@@ -224,9 +241,9 @@ int main(int argc, char *argv[])
                     break;
                 }
                 else if (found_lib > 1)
-                {//если нашли одинаковые опции
+                { // если нашли одинаковые опции
                     fprintf(stderr, "Error: matching option names in libs! Opt name: %s\n", long_options[option_index].name);
-                    cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+                    cleanup(libcnt, plug_arr);
                     if (walk_opts)
                     {
                         for (size_t z = 0; z < libcnt; z++)
@@ -248,7 +265,7 @@ int main(int argc, char *argv[])
     for (size_t i = 0; i < libcnt; i++)
     {
         if (walk_opts[i] == NULL)
-            printf("No options found for lib№%ld (%s), skipping it...\n", i, pi[i].plugin_purpose);
+            printf("No options found for lib№%ld (%s), skipping it...\n", i + 1, plug_arr[i].pi.plugin_purpose);
         else
             foundc += walk_opts_len[i];
     }
@@ -258,15 +275,16 @@ int main(int argc, char *argv[])
         printf("No correct search options!\nUsage:%s [options] <dir>\n-h for help and available options\n", argv[0]);
         if (walk_opts)
         {
-            for (size_t i = 0; i < proc_file_c; i++)
+            for (size_t i = 0; i < libcnt; i++)
             {
-                free(walk_opts[i]);
+                if (walk_opts_len[i] > 0)
+                    free(walk_opts[i]);
             }
             free(walk_opts);
         }
         if (walk_opts_len)
             free(walk_opts_len);
-        cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+        cleanup(libcnt, plug_arr);
         exit(EXIT_FAILURE);
     }
     // to get absolute path for folder
@@ -284,36 +302,28 @@ int main(int argc, char *argv[])
             free(cwd);
         }
     }
-    walking(walk_opts, walk_opts_len, argv[argc - 1], proc_file_arr, proc_file_c, narg, oaarg);
-    cleanup(in_opts, proc_file_arr, dls, libcnt, pi);
+    walking(argv[argc - 1], walk_opts, walk_opts_len, plug_arr, libcnt, narg, oaarg);
+    cleanup(libcnt, plug_arr);
     if (walk_opts)
-    {
-        for (size_t z = 0; z < libcnt; z++)
-        {
-            if (walk_opts[z])
-                free(walk_opts[z]);
-        }
-        free(walk_opts);
-    }
-    if (walk_opts_len)
-        free(walk_opts_len);
-    return 0;
-}
-/// freeing args
-void cleanup(struct plugin_option *in_opts, process_file_t *proc_file_arr, void **dls, size_t libcnt, struct plugin_info *pi)
-{
-    if (in_opts != NULL)
-        free(in_opts);
-    if (proc_file_arr != NULL)
-        free(proc_file_arr);
-    if (dls != NULL)
     {
         for (size_t i = 0; i < libcnt; i++)
         {
-            dlclose(dls[i]);
+            if (walk_opts_len[i] > 0)
+                free(walk_opts[i]);
         }
-        free(dls);
+        free(walk_opts);
+        free(walk_opts_len);
     }
-    if (pi != NULL)
-        free(pi);
+    return 0;
+}
+/// freeing args
+void cleanup(size_t libcnt, plug_t plug_arr[])
+{
+    for (size_t i = 0; i < libcnt; i++)
+    {
+        if (dlclose(plug_arr[i].dl_handle) != 0)
+            fprintf(stderr, "error while dlclosing(): %s\n", dlerror());
+    }
+    if (plug_arr)
+        free(plug_arr);
 }

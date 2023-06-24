@@ -11,7 +11,12 @@
 typedef int (*process_file_t)(const char *,
                         struct option *,
                         size_t);
-void open_libs(struct plugin_option *in_opts[], size_t *in_opts_c, char *dir, process_file_t **proc_file, size_t *proc_file_c, void ***dlibs, size_t *libcnt, struct plugin_info **pi);
-void walking(struct option **in_opts, size_t *in_opts_len, char *dir,process_file_t *proc_file, size_t proc_file_c, const int narg, const int oaarg);
+typedef struct{
+    void* dl_handle;
+    struct plugin_info pi;
+    process_file_t proc_file;
+} plug_t;
+void open_libs(char *dir, size_t *plug_cnt, plug_t *plug_arr[]);
+void walking(char *dir, struct option **in_opts, size_t *in_opts_len, plug_t plug_arr[], size_t libcnt, const int narg, const int oaarg);
 
 #endif
